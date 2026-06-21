@@ -51,11 +51,12 @@ export default function Header({ connected, fps }: HeaderProps) {
         <div style={{
           width: 40, height: 40,
           borderRadius: 10,
-          background: 'linear-gradient(135deg, #00e5ff 0%, #00ffa9 100%)',
+          overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 0 20px rgba(0,229,255,0.3)',
+          background: 'rgba(0,0,0,0.2)',
         }}>
-          <Shield size={22} color="#05080f" strokeWidth={2.5} />
+          <img src="/logo.png" alt="BrahMos Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div>
           <h1 style={{

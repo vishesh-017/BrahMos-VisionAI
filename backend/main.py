@@ -645,8 +645,23 @@ async def generate_report_pdf():
                 [Paragraph(f"<b>AI Reasoning:</b> {reasoning}", bod), ""],
                 [Paragraph(f"<b>Persons:</b> {persons}  |  <b>Objects:</b> {objects}", sml), ""],
             ]
+
+            # Append image if snapshot exists
+            snapshot_file = ev.get("snapshot_path")
+            if snapshot_file:
+                snap_full = os.path.join(os.path.dirname(__file__), "data", "snapshots", snapshot_file)
+                if os.path.exists(snap_full):
+                    from reportlab.platypus import Image as RLImage
+                    try:
+                        # 16:9 ratio image, fit width to 100mm
+                        img = RLImage(snap_full, width=100*mm, height=56.25*mm)
+                        ev_data.append([img, ""])
+                    except Exception as e:
+                        print(f"Failed to load image for PDF: {e}")
+
             ev_table = Table(ev_data, colWidths=[110*mm, 56*mm], repeatRows=0)
-            ev_table.setStyle(TableStyle([
+            
+            table_styles = [
                 ("BACKGROUND",   (0,0), (-1,-1), colors.HexColor("#fef2f2")),
                 ("BOX",          (0,0), (-1,-1), 1, RED),
                 ("SPAN",         (0,1), (1,1)),
@@ -657,7 +672,14 @@ async def generate_report_pdf():
                 ("LEFTPADDING",  (0,0), (-1,-1), 8),
                 ("RIGHTPADDING", (0,0), (-1,-1), 8),
                 ("VALIGN",       (0,0), (-1,-1), "TOP"),
-            ]))
+            ]
+            
+            if snapshot_file and len(ev_data) > 4:
+                table_styles.append(("SPAN", (0,4), (1,4)))
+                table_styles.append(("ALIGN", (0,4), (1,4), "CENTER"))
+                table_styles.append(("BOTTOMPADDING", (0,4), (1,4), 10))
+
+            ev_table.setStyle(TableStyle(table_styles))
             story.append(ev_table)
             story.append(Spacer(1, 6))
 
