@@ -1,0 +1,32 @@
+# BrahMos VisionAI Repository Gitignore
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+
+# Env
+.env
+.env.local
+
+# Database & AI Weights
+backend/data/
+backend/memory.db
+backend/*.pt
+*.pt
+*.onnx
+
+# IDE
+.vscode/
+.idea/
+
+# Temp Files
+AGPL-LICENSE.txt
+frontend/node_modules/
+backend/venv/

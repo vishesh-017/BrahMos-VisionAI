@@ -1,0 +1,292 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Design Tokens — CSS Custom Properties
+   Used throughout all components via var(--xxx)
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* — Colors — */
+  --accent-cyan: #00e5ff;
+  --accent-green: #00ffa9;
+  --accent-purple: #a855f7;
+  --accent-amber: #ffb800;
+
+  /* — Risk Levels — */
+  --risk-low: #00ffa9;
+  --risk-medium: #ffb800;
+  --risk-high: #ff3d5a;
+
+  /* — Text — */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* — Surfaces — */
+  --bg-body: #0a0f1c;
+  --bg-card: rgba(15, 23, 42, 0.65);
+  --bg-card-hover: rgba(15, 23, 42, 0.8);
+  --border-subtle: rgba(148, 163, 184, 0.12);
+
+  /* — Radius — */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* — Fonts — */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Base Layer
+   ═══════════════════════════════════════════════════════════════════════ */
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-100 font-sans antialiased overflow-x-hidden;
+    font-family: var(--font-sans);
+    background-color: var(--bg-body);
+    background-image:
+      radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+    background-attachment: fixed;
+    transition: background-color 0.3s ease, filter 0.3s ease;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Lockdown Mode (HIGH risk state)
+   ═══════════════════════════════════════════════════════════════════════ */
+body.lockdown-mode {
+  @apply bg-red-950;
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(255, 0, 0, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(255, 0, 0, 0.2) 0%, transparent 50%);
+  animation: lockdown-pulse 1.5s infinite alternate;
+}
+
+@keyframes lockdown-pulse {
+  from {
+    filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.2)) brightness(1);
+  }
+  to {
+    filter: drop-shadow(0 0 30px rgba(255, 0, 0, 0.5)) brightness(1.2);
+  }
+}
+
+.lockdown-mode .glass-card,
+.lockdown-mode .cyber-panel {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  background: rgba(69, 10, 10, 0.4) !important;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+}
+
+.lockdown-mode .cyber-title,
+.lockdown-mode .section-title {
+  color: #f87171 !important;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Component Layer
+   ═══════════════════════════════════════════════════════════════════════ */
+@layer components {
+
+  /* ────────────────── Glass Card (Primary Surface) ────────────────── */
+  .glass-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: all 0.3s ease;
+  }
+
+  .glass-card:hover {
+    border-color: rgba(0, 229, 255, 0.15);
+    box-shadow:
+      0 4px 32px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(0, 229, 255, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* ────────────────── Section Title ────────────────── */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  /* ────────────────── Cyber Panel (Legacy) ────────────────── */
+  .cyber-panel {
+    @apply bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-xl transition-all duration-300;
+  }
+
+  .cyber-panel-hover {
+    @apply hover:border-sky-500/30 hover:bg-slate-800/60 hover:shadow-sky-500/10;
+  }
+
+  /* ────────────────── Cyber Title (Legacy) ────────────────── */
+  .cyber-title {
+    @apply font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400;
+  }
+
+  /* ────────────────── Buttons ────────────────── */
+  .cyber-btn-primary {
+    @apply relative overflow-hidden rounded-lg px-4 py-2 font-medium text-white;
+    background: linear-gradient(135deg, #0284c7, #6366f1);
+    box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .cyber-btn-primary:hover {
+    box-shadow: 0 0 25px rgba(14, 165, 233, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .cyber-btn-secondary {
+    @apply relative rounded-lg px-4 py-2 font-medium text-slate-300 bg-slate-800 border border-slate-700;
+    transition: all 0.3s ease;
+  }
+
+  .cyber-btn-secondary:hover {
+    @apply text-white bg-slate-700 border-slate-600;
+    transform: translateY(-1px);
+  }
+
+  /* ────────────────── Badges ────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider;
+  }
+
+  .badge-low {
+    @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+  }
+
+  .badge-medium {
+    @apply bg-amber-500/10 text-amber-400 border border-amber-500/20;
+  }
+
+  .badge-high {
+    @apply bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse;
+  }
+
+  .badge-gemini {
+    @apply bg-indigo-500/10 text-indigo-400 border border-indigo-500/20;
+  }
+
+  .badge-fallback {
+    @apply bg-slate-500/10 text-slate-400 border border-slate-500/20;
+  }
+
+  /* ────────────────── Form Inputs ────────────────── */
+  .cyber-input {
+    @apply w-full rounded-lg bg-slate-900/50 border border-slate-700 px-4 py-2 text-slate-200 placeholder-slate-500;
+    @apply focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-all duration-300;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Scrollbar
+   ═══════════════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Animations
+   ═══════════════════════════════════════════════════════════════════════ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Grid Background Pattern
+   ═══════════════════════════════════════════════════════════════════════ */
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Video Scanline Overlay
+   ═══════════════════════════════════════════════════════════════════════ */
+.video-scanline {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+      transparent 50%,
+      rgba(14, 165, 233, 0.02) 51%,
+      transparent 51%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 10;
+}

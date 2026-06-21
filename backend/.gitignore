@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+venv/
+env/
+
+# BrahMos VisionAI Data
+data/
+memory.db
+brahmos_vision_model.pt
+yolov8n.pt
+
+# IDE
+.vscode/
+.idea/
