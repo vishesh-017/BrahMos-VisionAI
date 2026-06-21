@@ -4,7 +4,7 @@
 
 BrahMos VisionAI is an advanced, real-time AI security and surveillance dashboard. Powered by local ONNX models for object detection and local LLMs (or Gemini) for high-level reasoning, the system not only detects what is in the camera feed, but actively *understands context, assigns risk scores, and recommends actions*.
 
-![BrahMos VisionAI Dashboard](frontend/public/favicon.ico) <!-- Replace with a screenshot URL when available -->
+<img width="1908" height="876" alt="image" src="https://github.com/user-attachments/assets/c9fd9558-475a-4cd9-996f-e0d892bdf8f0" />
 
 ---
 
