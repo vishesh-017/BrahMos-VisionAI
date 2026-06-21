@@ -2,16 +2,16 @@
 
 **Agentic AI Surveillance System** — *Detect • Understand • Think • Decide • Act*
 
-BrahMos VisionAI is an advanced, real-time AI security and surveillance dashboard. Powered by local ONNX models for object detection and local LLMs (or Gemini) for high-level reasoning, the system not only detects what is in the camera feed, but actively *understands context, assigns risk scores, and recommends actions*.
+BrahMos VisionAI is an advanced, real-time AI security and surveillance dashboard. Powered by local ONNX models for object detection and local LLMs (or Gemini) for high-level reasoning, the system not only detects objects but *understands* the context, assesses risk dynamically, and generates actionable intelligence.
 
-<img width="1908" height="876" alt="image" src="https://github.com/user-attachments/assets/c9fd9558-475a-4cd9-996f-e0d892bdf8f0" />
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/c9fd9558-475a-4cd9-996f-e0d892bdf8f0" />
 
 ---
 
 ## 🌟 Key Features
 
 *   **Real-time Object Detection:** Uses YOLOv8 (ONNX) to identify persons, vehicles, bags, and potential threats with high accuracy and low latency.
-*   **Agentic AI Reasoning:** Goes beyond standard bounding boxes. The system analyzes the *context* of the scene. (e.g., "Person walking a dog" vs. "Unidentified person loitering near restricted server room at 3 AM").
+*   **Agentic AI Reasoning:** Goes beyond standard bounding boxes. The system analyzes the *context* of the scene. (e.g., "Person walking a dog" vs. "Unidentified person loitering near restricted server rooms").
 *   **Dynamic Risk Scoring:** Automatically assigns a Risk Level (LOW, MEDIUM, HIGH) to events based on AI analysis.
 *   **Forensic Report Generation:** Instantly generate beautiful, detailed PDF security reports summarizing daily events, statistics, and critical warnings.
 *   **Smart Query System:** Ask the system questions in natural language like *"Did anyone enter the restricted zone today?"* or *"Summarize today's high-risk events."*
