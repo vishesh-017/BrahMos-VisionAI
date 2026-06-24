@@ -426,10 +426,20 @@ class VisionEngine:
         cv2.imwrite(path, frame)
         return fname
 
+    def clear_trackers_identity(self):
+        """Force re-identification of all tracked persons (e.g. after database updates)."""
+        for tid in self._trackers:
+            if "identified_name" in self._trackers[tid]:
+                del self._trackers[tid]["identified_name"]
+            if "identified_role" in self._trackers[tid]:
+                del self._trackers[tid]["identified_role"]
+
     # ─── Summarise detections ────────────────────────────────────────
     def summarise(self) -> dict:
         """Return a structured summary of the latest detections."""
-        dets = self.latest_detections
+        with self.lock:
+            dets = list(self._latest_detections)
+            is_dark = self._is_dark
         labels = [d["label"] for d in dets]
         persons = labels.count("person")
         objects = [l for l in labels if l != "person"]
@@ -446,7 +456,7 @@ class VisionEngine:
             "total_detections": len(dets),
             "detections": dets,
             "fps": round(self.fps, 1),
-            "is_dark": self._is_dark,
+            "is_dark": is_dark,
             "time": datetime.now().strftime("%H:%M:%S"),
             "period": _time_period(),
         }

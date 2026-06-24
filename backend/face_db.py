@@ -110,10 +110,16 @@ def _encode_with_histogram(img_bgr: np.ndarray) -> Optional[list]:
             hist = cv2.calcHist([face_resized], [ch], None, [32], [0, 256])
             features.extend(hist.flatten().tolist())
 
-        # Grayscale texture via Laplacian
+        # Grayscale texture via Laplacian (absolute values, normalized to 0-255)
         gray_face = cv2.cvtColor(face_resized, cv2.COLOR_BGR2GRAY)
         lap = cv2.Laplacian(gray_face, cv2.CV_32F)
-        lap_hist = cv2.calcHist([lap.astype(np.uint8)], [0], None, [32], [0, 256])
+        lap_abs = np.abs(lap)
+        lap_max = lap_abs.max()
+        if lap_max > 0:
+            lap_norm = (lap_abs / lap_max * 255).astype(np.uint8)
+        else:
+            lap_norm = np.zeros_like(gray_face, dtype=np.uint8)
+        lap_hist = cv2.calcHist([lap_norm], [0], None, [32], [0, 256])
         features.extend(lap_hist.flatten().tolist())
 
         vec = np.array(features, dtype=np.float32)

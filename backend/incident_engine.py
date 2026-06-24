@@ -28,7 +28,9 @@ IST = ZoneInfo("Asia/Kolkata")
 
 def _parse_ts(ts_str: str) -> Optional[datetime]:
     try:
-        return datetime.fromisoformat(ts_str)
+        dt = datetime.fromisoformat(ts_str)
+        # Always return naive datetime for consistent comparisons
+        return dt.replace(tzinfo=None)
     except Exception:
         return None
 
@@ -46,8 +48,9 @@ def _detect_suspicious_drop(events: list[dict]) -> Optional[dict]:
             if not ts:
                 continue
             # Find prior events within 15 mins where person was present
+            # events[i+1:] looks at OLDER events in the newest-first list (skip current event itself)
             prior = [
-                e for e in events[i:]
+                e for e in events[i+1:]
                 if e.get("person_count", 0) > 0
                 and e.get("camera_id") == event.get("camera_id")
                 and _parse_ts(e.get("timestamp", "")) is not None
@@ -141,11 +144,13 @@ def _detect_repeated_intrusion(events: list[dict]) -> Optional[dict]:
     """Pattern E: More than 2 HIGH risk events in the last hour."""
     now = datetime.now(IST)
     one_hour_ago = now - timedelta(hours=1)
+    # _parse_ts always returns naive datetimes; strip tzinfo from one_hour_ago for comparison
+    one_hour_ago_naive = one_hour_ago.replace(tzinfo=None)
     high_events = [
         e for e in events
         if e.get("risk_level") == "HIGH"
         and _parse_ts(e.get("timestamp", "")) is not None
-        and _parse_ts(e.get("timestamp")) >= one_hour_ago
+        and _parse_ts(e.get("timestamp")) >= one_hour_ago_naive
     ]
     if len(high_events) >= 2:
         return {

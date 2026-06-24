@@ -174,7 +174,9 @@ def get_events(
         if risk_level:
             q = q.filter(SecurityEvent.risk_level == risk_level.upper())
         if since:
-            q = q.filter(SecurityEvent.timestamp >= since)
+            # SQLite stores naive datetimes; strip tzinfo to avoid comparison errors
+            since_naive = since.replace(tzinfo=None) if since.tzinfo is not None else since
+            q = q.filter(SecurityEvent.timestamp >= since_naive)
         return [e.to_dict() for e in q.limit(limit).all()]
     finally:
         session.close()
@@ -193,7 +195,7 @@ def get_today_events() -> list[dict]:
     """All events from today (UTC)."""
     today_start = datetime.now(ZoneInfo('Asia/Kolkata')).replace(
         hour=0, minute=0, second=0, microsecond=0
-    )
+    ).replace(tzinfo=None)  # Strip tzinfo — SQLite stores naive datetimes
     return get_events(limit=500, since=today_start)
 
 
@@ -251,7 +253,7 @@ def get_incidents(limit: int = 20) -> list[dict]:
     try:
         q = session.query(Incident, SecurityEvent).outerjoin(
             SecurityEvent, Incident.evidence_event_id == SecurityEvent.id
-        ).order_by(desc(Incident.timestamp)).limit(limit).all()
+        ).filter(Incident.resolved == 0).order_by(desc(Incident.timestamp)).limit(limit).all()
         
         results = []
         for inc, evt in q:
@@ -262,12 +264,36 @@ def get_incidents(limit: int = 20) -> list[dict]:
     finally:
         session.close()
 
+def resolve_incident(incident_id: str) -> bool:
+    session = get_session()
+    try:
+        inc = session.query(Incident).filter(Incident.id == incident_id).first()
+        if inc:
+            inc.resolved = 1
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
+
+def escalate_incident(incident_id: str) -> bool:
+    session = get_session()
+    try:
+        inc = session.query(Incident).filter(Incident.id == incident_id).first()
+        if inc:
+            inc.confidence = "CRITICAL"
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
+
 
 def get_open_incident_patterns() -> set:
     """Return patterns of incidents created in the last 30 minutes (to avoid duplicates)."""
     session = get_session()
     try:
-        since = datetime.now(ZoneInfo('Asia/Kolkata')) - timedelta(minutes=30)
+        since = (datetime.now(ZoneInfo('Asia/Kolkata')) - timedelta(minutes=30)).replace(tzinfo=None)
         rows = session.query(Incident).filter(Incident.timestamp >= since).all()
         return {r.pattern for r in rows}
     finally:
@@ -278,7 +304,7 @@ def get_insights() -> list[dict]:
     session = get_session()
     try:
         now = datetime.now(ZoneInfo('Asia/Kolkata'))
-        since = now - timedelta(hours=24)
+        since = (now - timedelta(hours=24)).replace(tzinfo=None)  # Strip tzinfo for SQLite
         events = session.query(SecurityEvent).filter(SecurityEvent.timestamp >= since).all()
         
         heatmap = {}

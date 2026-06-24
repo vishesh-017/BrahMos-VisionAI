@@ -171,6 +171,7 @@ def _analysis_loop():
     last_always_save = 0
     last_saved_state = None
     last_saved_state_time = 0.0
+    last_alert_time = 0.0  # separate cooldown for alert dispatching
 
     while not _stop_event.is_set():
         time.sleep(ANALYSIS_INTERVAL)
@@ -242,15 +243,17 @@ def _analysis_loop():
                         snapshot_hash=snapshot_hash,
                     )
                 
-                # TRIGGER HACKATHON FEATURES
-                if analysis["risk_level"] == "HIGH":
-                    # Trigger Voice Warning
-                    warn_msg = f"Attention. {analysis.get('scene_description', 'High risk detected')} Please evacuate or authorize immediately."
-                    _voice_queue.put(warn_msg)
-                    
-                    # Trigger Email Dispatch
-                    email_body = f"""BrahMos VisionAI Security Alert
-                    
+            # TRIGGER ALERTS — independent of save deduplication logic
+            # Fire voice/email/telegram whenever HIGH risk is detected (2-minute cooldown)
+            if analysis["risk_level"] == "HIGH" and (now - last_alert_time) >= 120:
+                last_alert_time = now
+                # Trigger Voice Warning
+                warn_msg = f"Attention. {analysis.get('scene_description', 'High risk detected')} Please evacuate or authorize immediately."
+                _voice_queue.put(warn_msg)
+                
+                # Trigger Email Dispatch
+                email_body = f"""BrahMos VisionAI Security Alert
+                
 Risk Level: HIGH (Score: {analysis['risk_score']})
 Time: {summary['time']}
 Persons Detected: {summary['person_count']}
@@ -265,15 +268,15 @@ Suggested Action:
 Scene Description:
 {analysis.get("scene_description", "")}
 """
-                    _email_queue.put({
-                        "subject": f"URGENT: High Security Risk Detected at {summary['time']}",
-                        "body": email_body
-                    })
-                    
-                    # Trigger Telegram Dispatch
-                    tg_text = f"🚨 *BrahMos VisionAI Alert* 🚨\n\n*Risk Level:* HIGH (Score: {analysis['risk_score']})\n*Time:* {summary['time']}\n*Persons:* {summary['person_count']}\n\n*Reasoning:*\n{'; '.join(analysis.get('reasons', []))}\n\n*Action:* {analysis.get('suggested_action', '')}"
-                    _telegram_queue.put({"text": tg_text})
-                    
+                _email_queue.put({
+                    "subject": f"URGENT: High Security Risk Detected at {summary['time']}",
+                    "body": email_body
+                })
+                
+                # Trigger Telegram Dispatch
+                tg_text = f"🚨 *BrahMos VisionAI Alert* 🚨\n\n*Risk Level:* HIGH (Score: {analysis['risk_score']})\n*Time:* {summary['time']}\n*Persons:* {summary['person_count']}\n\n*Reasoning:*\n{'; '.join(analysis.get('reasons', []))}\n\n*Action:* {analysis.get('suggested_action', '')}"
+                _telegram_queue.put({"text": tg_text})
+                
         except Exception as e:
             print(f"[AnalysisLoop] Error: {e}")
 
@@ -740,6 +743,24 @@ async def get_incidents(limit: int = Query(20, ge=1, le=100)):
     """Get AI-investigated incident reports."""
     return memory.get_incidents(limit=limit)
 
+@app.post("/api/incidents/{incident_id}/resolve")
+async def resolve_incident(incident_id: str):
+    """Mark an incident as resolved."""
+    success = memory.resolve_incident(incident_id)
+    if not success:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return {"status": "resolved"}
+
+@app.post("/api/incidents/{incident_id}/escalate")
+async def escalate_incident(incident_id: str):
+    """Escalate an incident to CRITICAL confidence."""
+    success = memory.escalate_incident(incident_id)
+    if not success:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return {"status": "escalated"}
+
 @app.get("/api/insights")
 async def get_insights():
     """Get aggregated event data by hour for risk heatmap."""
@@ -790,6 +811,7 @@ async def register_person(
             {"error": "No face detected in the uploaded photo. Please use a clear, front-facing photo."},
             status_code=400,
         )
+    engine.clear_trackers_identity()
     return result
 
 
@@ -799,6 +821,7 @@ async def delete_person(person_id: str):
     success = face_db.delete_person(person_id)
     if not success:
         return JSONResponse({"error": "Person not found"}, status_code=404)
+    engine.clear_trackers_identity()
     return {"deleted": person_id}
 
 

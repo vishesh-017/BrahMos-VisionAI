@@ -48,7 +48,7 @@ function App() {
 
   useEffect(() => {
     addAlert(analysis);
-  }, [analysis?.scene_description, analysis?.risk_level]);
+  }, [analysis, addAlert]);
 
   const riskLevel = analysis?.risk_level ?? 'LOW';
   const riskScore = analysis?.risk_score ?? 0;
