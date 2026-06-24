@@ -70,7 +70,7 @@ function App() {
   }, [riskLevel]);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)', backgroundAttachment: 'fixed' }}>
       <audio ref={audioRef} loop src="data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" />
       <Header connected={connected} fps={fps} />
 
@@ -128,19 +128,22 @@ function App() {
           {/* ── RIGHT COLUMN — 6-tab panel ──────────────────────── */}
           <div style={{
             display: 'flex', flexDirection: 'column',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-subtle)',
+            background: 'rgba(4, 10, 28, 0.72)',
+            border: '1px solid rgba(0,212,255,0.1)',
             borderRadius: 'var(--radius-lg)',
             overflow: 'hidden',
             minHeight: 0,
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
           }}>
 
             {/* Tab bar */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(6, 1fr)',
-              borderBottom: '1px solid var(--border-subtle)',
+              borderBottom: '1px solid rgba(0,212,255,0.08)',
               flexShrink: 0,
+              background: 'rgba(0,5,18,0.5)',
             }}>
               {TABS.map(({ key, label, Icon }) => {
                 const active = activeTab === key;
@@ -148,21 +151,10 @@ function App() {
                   <button
                     key={key}
                     onClick={() => setActiveTab(key)}
-                    style={{
-                      padding: '10px 4px 8px',
-                      background: active ? 'rgba(0,229,255,0.06)' : 'transparent',
-                      border: 'none',
-                      borderBottom: active ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-                      color: active ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                      cursor: 'pointer',
-                      display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', justifyContent: 'center', gap: 3,
-                      transition: 'all 0.18s',
-                      fontFamily: 'var(--font-sans)',
-                    }}
+                    className={`tab-btn${active ? ' active' : ''}`}
                   >
                     <Icon size={14} />
-                    <span style={{ fontSize: '0.55rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase' }}>
                       {label}
                     </span>
                   </button>
@@ -271,12 +263,13 @@ function App() {
           transition={{ delay: 0.8 }}
           style={{
             textAlign: 'center', padding: '10px 0',
-            fontSize: '0.58rem', color: 'var(--text-muted)',
-            borderTop: '1px solid var(--border-subtle)',
-            letterSpacing: '0.05em',
+            fontSize: '0.54rem', color: 'var(--text-muted)',
+            borderTop: '1px solid rgba(0,212,255,0.07)',
+            letterSpacing: '0.1em',
+            fontFamily: 'var(--font-mono)',
           }}
         >
-          BrahMos VisionAI v1.0 — Agentic AI Vision Surveillance System — Detect • Understand • Think • Decide • Act
+          BRAHMOS-VISIONAI v1.0 &nbsp;·&nbsp; DETECT &nbsp;·&nbsp; UNDERSTAND &nbsp;·&nbsp; THINK &nbsp;·&nbsp; DECIDE &nbsp;·&nbsp; ACT
         </motion.footer>
       </main>
     </div>

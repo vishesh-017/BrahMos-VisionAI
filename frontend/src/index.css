@@ -1,133 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Design Tokens — CSS Custom Properties
-   Used throughout all components via var(--xxx)
+   Design Tokens
    ═══════════════════════════════════════════════════════════════════════ */
 :root {
-  /* — Colors — */
-  --accent-cyan: #00e5ff;
-  --accent-green: #00ffa9;
+  --accent-cyan:   #00d4ff;
+  --accent-green:  #00ffa9;
   --accent-purple: #a855f7;
-  --accent-amber: #ffb800;
+  --accent-amber:  #f59e0b;
 
-  /* — Risk Levels — */
-  --risk-low: #00ffa9;
-  --risk-medium: #ffb800;
-  --risk-high: #ff3d5a;
+  --risk-low:    #00ffa9;
+  --risk-medium: #f59e0b;
+  --risk-high:   #ef4444;
 
-  /* — Text — */
-  --text-primary: #e2e8f0;
+  --text-primary:   #e2e8f0;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-muted:     #475569;
 
-  /* — Surfaces — */
-  --bg-body: #0a0f1c;
-  --bg-card: rgba(15, 23, 42, 0.65);
-  --bg-card-hover: rgba(15, 23, 42, 0.8);
-  --border-subtle: rgba(148, 163, 184, 0.12);
+  --bg-base:        #020812;
+  --bg-body:        #020812;
+  --bg-card:        rgba(8, 15, 35, 0.7);
+  --bg-card-hover:  rgba(8, 15, 35, 0.9);
+  --border-subtle:  rgba(0, 212, 255, 0.08);
+  --border-glow:    rgba(0, 212, 255, 0.25);
 
-  /* — Radius — */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 
-  /* — Fonts — */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Base Layer
+   Base
    ═══════════════════════════════════════════════════════════════════════ */
 @layer base {
   body {
-    @apply bg-slate-900 text-slate-100 font-sans antialiased overflow-x-hidden;
     font-family: var(--font-sans);
-    background-color: var(--bg-body);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
     background-image:
-      radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.05) 0%, transparent 50%),
-      radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+      /* Tactical grid */
+      linear-gradient(rgba(0, 212, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 212, 255, 0.025) 1px, transparent 1px),
+      /* Ambient glows */
+      radial-gradient(ellipse at 10% 60%, rgba(0, 212, 255, 0.06) 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 20%, rgba(168, 85, 247, 0.07) 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 100%, rgba(0, 212, 255, 0.04) 0%, transparent 50%);
+    background-size: 50px 50px, 50px 50px, 100% 100%, 100% 100%, 100% 100%;
     background-attachment: fixed;
-    transition: background-color 0.3s ease, filter 0.3s ease;
+    transition: background-color 0.4s ease, filter 0.4s ease;
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Lockdown Mode (HIGH risk state)
+   Lockdown Mode (HIGH risk)
    ═══════════════════════════════════════════════════════════════════════ */
 body.lockdown-mode {
-  @apply bg-red-950;
+  background-color: #0d0000;
   background-image:
-    radial-gradient(circle at 15% 50%, rgba(255, 0, 0, 0.2) 0%, transparent 50%),
-    radial-gradient(circle at 85% 30%, rgba(255, 0, 0, 0.2) 0%, transparent 50%);
+    linear-gradient(rgba(239, 68, 68, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239, 68, 68, 0.04) 1px, transparent 1px),
+    radial-gradient(ellipse at 15% 50%, rgba(255, 0, 0, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 30%, rgba(255, 0, 0, 0.15) 0%, transparent 50%);
+  background-size: 50px 50px, 50px 50px, 100% 100%, 100% 100%;
   animation: lockdown-pulse 1.5s infinite alternate;
 }
 
 @keyframes lockdown-pulse {
-  from {
-    filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.2)) brightness(1);
-  }
-  to {
-    filter: drop-shadow(0 0 30px rgba(255, 0, 0, 0.5)) brightness(1.2);
-  }
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.15) drop-shadow(0 0 40px rgba(255, 0, 0, 0.3)); }
 }
 
 .lockdown-mode .glass-card,
 .lockdown-mode .cyber-panel {
-  border-color: rgba(239, 68, 68, 0.5) !important;
-  background: rgba(69, 10, 10, 0.4) !important;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  background: rgba(60, 5, 5, 0.5) !important;
+  box-shadow: 0 0 25px rgba(255, 0, 0, 0.15), inset 0 1px 0 rgba(255, 80, 80, 0.05) !important;
 }
 
-.lockdown-mode .cyber-title,
 .lockdown-mode .section-title {
   color: #f87171 !important;
   text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Component Layer
+   Components
    ═══════════════════════════════════════════════════════════════════════ */
 @layer components {
 
-  /* ────────────────── Glass Card (Primary Surface) ────────────────── */
+  /* ── Primary Surface ── */
   .glass-card {
     background: var(--bg-card);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      0 4px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
     transition: all 0.3s ease;
   }
 
   .glass-card:hover {
-    border-color: rgba(0, 229, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.18);
     box-shadow:
-      0 4px 32px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(0, 229, 255, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      0 4px 40px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(0, 212, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
-  /* ────────────────── Section Title ────────────────── */
+  /* ── Tactical KPI card with glowing bottom border ── */
+  .kpi-card {
+    background: linear-gradient(135deg, rgba(8, 15, 35, 0.9) 0%, rgba(12, 20, 48, 0.8) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: var(--kpi-accent, var(--accent-cyan));
+    box-shadow: 0 0 10px var(--kpi-accent, var(--accent-cyan));
+    opacity: 0.7;
+  }
+
+  /* ── Section Title ── */
   .section-title {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.14em;
     color: var(--text-muted);
     margin-bottom: 12px;
   }
 
-  /* ────────────────── Cyber Panel (Legacy) ────────────────── */
+  /* ── Tab Buttons (tactical toggle) ── */
+  .tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 4px 8px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-sans);
+    position: relative;
+  }
+
+  .tab-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    transition: background 0.2s;
+  }
+
+  .tab-btn.active {
+    color: var(--accent-cyan);
+    border-bottom-color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.05);
+  }
+
+  .tab-btn.active::before {
+    background: linear-gradient(to bottom, rgba(0, 212, 255, 0.04), transparent);
+  }
+
+  .tab-btn:hover:not(.active) {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* ── Cyber Panel ── */
   .cyber-panel {
     @apply bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-xl transition-all duration-300;
   }
@@ -136,21 +202,20 @@ body.lockdown-mode {
     @apply hover:border-sky-500/30 hover:bg-slate-800/60 hover:shadow-sky-500/10;
   }
 
-  /* ────────────────── Cyber Title (Legacy) ────────────────── */
   .cyber-title {
-    @apply font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400;
+    @apply font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400;
   }
 
-  /* ────────────────── Buttons ────────────────── */
+  /* ── Buttons ── */
   .cyber-btn-primary {
     @apply relative overflow-hidden rounded-lg px-4 py-2 font-medium text-white;
     background: linear-gradient(135deg, #0284c7, #6366f1);
-    box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.25);
     transition: all 0.3s ease;
   }
 
   .cyber-btn-primary:hover {
-    box-shadow: 0 0 25px rgba(14, 165, 233, 0.5);
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.45);
     transform: translateY(-1px);
   }
 
@@ -164,21 +229,28 @@ body.lockdown-mode {
     transform: translateY(-1px);
   }
 
-  /* ────────────────── Badges ────────────────── */
+  /* ── Risk Badges ── */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider;
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider;
   }
 
   .badge-low {
-    @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+    background: rgba(0, 255, 169, 0.1);
+    color: var(--risk-low);
+    border: 1px solid rgba(0, 255, 169, 0.2);
   }
 
   .badge-medium {
-    @apply bg-amber-500/10 text-amber-400 border border-amber-500/20;
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--risk-medium);
+    border: 1px solid rgba(245, 158, 11, 0.25);
   }
 
   .badge-high {
-    @apply bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse;
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--risk-high);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    animation: pulse-badge 1.2s ease-in-out infinite;
   }
 
   .badge-gemini {
@@ -189,104 +261,101 @@ body.lockdown-mode {
     @apply bg-slate-500/10 text-slate-400 border border-slate-500/20;
   }
 
-  /* ────────────────── Form Inputs ────────────────── */
-  .cyber-input {
-    @apply w-full rounded-lg bg-slate-900/50 border border-slate-700 px-4 py-2 text-slate-200 placeholder-slate-500;
-    @apply focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition-all duration-300;
+  /* ── Alert cards ── */
+  .alert-card-high {
+    background: rgba(69, 10, 10, 0.4);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(239, 68, 68, 0.06);
+    border-radius: var(--radius-sm);
   }
-}
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Scrollbar
-   ═══════════════════════════════════════════════════════════════════════ */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+  .alert-card-medium {
+    background: rgba(55, 35, 5, 0.4);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.1);
+    border-radius: var(--radius-sm);
+  }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+  .alert-card-low {
+    background: rgba(5, 30, 30, 0.4);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: var(--radius-sm);
+  }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-  border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.6);
+  /* ── Form Input ── */
+  .cyber-input {
+    @apply w-full rounded-lg bg-slate-900/60 border border-slate-700/60 px-4 py-2 text-slate-200 placeholder-slate-500;
+    @apply focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/60 transition-all duration-200;
+    font-family: var(--font-sans);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    Animations
    ═══════════════════════════════════════════════════════════════════════ */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
 }
 
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blink-rec {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.1; }
+}
+
+@keyframes scan-line {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(300%); }
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px currentColor; }
+  50%       { box-shadow: 0 0 18px currentColor; }
 }
 
-.delay-100 {
-  animation-delay: 100ms;
-}
-
-.delay-200 {
-  animation-delay: 200ms;
-}
-
-.delay-300 {
-  animation-delay: 300ms;
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
+.animate-fade-in  { animation: fadeIn 0.4s ease-out forwards; }
+.animate-blink    { animation: blink-rec 1s ease-in-out infinite; }
+.animate-glow     { animation: glow-pulse 2s ease-in-out infinite; }
+.spin             { animation: spin 1s linear infinite; }
+.delay-100        { animation-delay: 100ms; }
+.delay-200        { animation-delay: 200ms; }
+.delay-300        { animation-delay: 300ms; }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Grid Background Pattern
+   Scrollbar
    ═══════════════════════════════════════════════════════════════════════ */
-.bg-grid-pattern {
-  background-size: 40px 40px;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.2);
+  border-radius: 999px;
 }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 212, 255, 0.4); }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Video Scanline Overlay
+   Camera targeting reticle corners
    ═══════════════════════════════════════════════════════════════════════ */
-.video-scanline {
+.reticle-corner {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom,
-      transparent 50%,
-      rgba(14, 165, 233, 0.02) 51%,
-      transparent 51%);
-  background-size: 100% 4px;
-  pointer-events: none;
-  z-index: 10;
+  width: 22px;
+  height: 22px;
+  border-color: var(--accent-cyan);
+  border-style: solid;
+  border-width: 0;
+  opacity: 0.8;
+  transition: opacity 0.3s;
 }
+.reticle-tl { top: 10px; left: 10px;  border-top-width: 2px; border-left-width: 2px; }
+.reticle-tr { top: 10px; right: 10px; border-top-width: 2px; border-right-width: 2px; }
+.reticle-bl { bottom: 10px; left: 10px;  border-bottom-width: 2px; border-left-width: 2px; }
+.reticle-br { bottom: 10px; right: 10px; border-bottom-width: 2px; border-right-width: 2px; }

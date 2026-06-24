@@ -255,7 +255,21 @@ def _fallback_chat(question: str, events: list[dict]) -> str:
     q = question.lower().strip()
 
     if total == 0:
-        return "No security events have been recorded yet today. The system is actively monitoring."
+        return "[Offline Mode] No security events have been recorded yet today. The system is actively monitoring."
+        
+    # ── Greetings & Basics ──────────────────────────────────────────
+    if any(w in q.split() for w in ["hello", "hi", "hey", "greetings"]):
+        return "Hello! I am currently operating in offline fallback mode. Ask me for a summary, score, or safety tips."
+        
+    # ── Safety Tips ─────────────────────────────────────────────────
+    if any(w in q for w in ["safety", "tips", "advice", "help"]):
+        return (
+            "**Tactical Safety Tips:**\n"
+            "- Ensure all camera feeds are unobstructed.\n"
+            "- Review High and Medium risk events daily.\n"
+            "- Keep restricted zones updated in the deployment settings.\n"
+            "- Report any unidentified persons to the administrator."
+        )
 
     high_events = [e for e in events if e.get("risk_level") == "HIGH"]
     medium_events = [e for e in events if e.get("risk_level") == "MEDIUM"]
@@ -359,13 +373,15 @@ def _fallback_chat(question: str, events: list[dict]) -> str:
 
     # ── Default fallback ────────────────────────────────────────────
     return (
+        f"[Notice: AI Quota Exceeded — Using Offline Fallback]\n\n"
         f"I found {total} events today. {len(high_events)} high-risk and "
         f"{len(medium_events)} medium-risk. Ask me:\n"
         f"- 'Summarize today'\n"
         f"- 'Any suspicious activity?'\n"
         f"- 'What is the security score?'\n"
         f"- 'Any loitering today?'\n"
-        f"- 'Show me the latest event'"
+        f"- 'Show me the latest event'\n"
+        f"- 'Safety tips'"
     )
 
 

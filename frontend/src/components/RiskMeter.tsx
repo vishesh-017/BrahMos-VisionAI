@@ -9,121 +9,134 @@ interface RiskMeterProps {
 }
 
 const RISK_CONFIG = {
-  LOW: { color: 'var(--risk-low)', label: 'LOW RISK', bg: 'rgba(0,255,169,0.08)' },
-  MEDIUM: { color: 'var(--risk-medium)', label: 'MEDIUM RISK', bg: 'rgba(255,184,0,0.08)' },
-  HIGH: { color: 'var(--risk-high)', label: 'HIGH RISK', bg: 'rgba(255,61,90,0.08)' },
+  LOW:    { color: 'var(--risk-low)',    label: 'LOW RISK',    segments: 2, hex: '#00ffa9' },
+  MEDIUM: { color: 'var(--risk-medium)', label: 'MEDIUM RISK', segments: 5, hex: '#f59e0b' },
+  HIGH:   { color: 'var(--risk-high)',   label: 'HIGH RISK',   segments: 9, hex: '#ef4444' },
 };
+
+const TOTAL_SEGMENTS = 10;
 
 export default function RiskMeter({ level, score, agentMode }: RiskMeterProps) {
   const config = RISK_CONFIG[level] || RISK_CONFIG.LOW;
   const pct = Math.round(score * 100);
-  const circumference = 2 * Math.PI * 54;
-  const offset = circumference - (score * circumference);
+  const filledSegments = Math.max(1, Math.round(score * TOTAL_SEGMENTS));
 
   return (
-    <div className="glass-card" style={{ padding: 20, textAlign: 'center', position: 'relative' }}>
-      <div className="section-title" style={{ justifyContent: 'center' }}>
-        <ShieldAlert size={13} />
-        Threat Level
-      </div>
-
-      {/* Agent Mode Indicator */}
+    <div className="glass-card" style={{
+      padding: 18, textAlign: 'center', position: 'relative',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+      border: `1px solid ${config.hex}18`,
+      boxShadow: `0 0 30px ${config.hex}10`,
+      transition: 'border-color 0.6s ease, box-shadow 0.6s ease',
+    }}>
+      {/* Agent mode badge */}
       {agentMode && (
         <div style={{
           position: 'absolute', top: 8, right: 8,
-          fontSize: '0.55rem', padding: '2px 6px',
-          borderRadius: 4, textTransform: 'uppercase',
-          background: agentMode === 'gemini' ? 'rgba(0,229,255,0.1)' : 'rgba(255,184,0,0.1)',
+          fontSize: '0.48rem', padding: '2px 7px', borderRadius: 4,
+          textTransform: 'uppercase', letterSpacing: '0.1em',
+          background: agentMode === 'gemini' ? 'rgba(0,212,255,0.08)' : 'rgba(245,158,11,0.08)',
           color: agentMode === 'gemini' ? 'var(--accent-cyan)' : 'var(--risk-medium)',
-          border: `1px solid ${agentMode === 'gemini' ? 'rgba(0,229,255,0.2)' : 'rgba(255,184,0,0.2)'}`,
+          border: `1px solid ${agentMode === 'gemini' ? 'rgba(0,212,255,0.18)' : 'rgba(245,158,11,0.18)'}`,
+          fontFamily: 'var(--font-mono)',
         }}>
-          {agentMode === 'gemini' ? 'Gemini AI' : 'Rule-Based'}
+          {agentMode === 'gemini' ? '⚡ Gemini' : 'Rule-Based'}
         </div>
       )}
 
-      {/* Circular gauge */}
-      <div style={{ position: 'relative', width: 140, height: 140, margin: '12px auto' }}>
-        <svg width="140" height="140" viewBox="0 0 120 120">
-          {/* Background ring */}
-          <circle
-            cx="60" cy="60" r="54"
-            fill="none"
-            stroke="rgba(255,255,255,0.05)"
-            strokeWidth="8"
-          />
-          {/* Animated progress ring */}
-          <motion.circle
-            cx="60" cy="60" r="54"
-            fill="none"
-            stroke={config.color}
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: offset }}
-            transition={{ duration: 1, ease: 'easeOut' }}
-            transform="rotate(-90 60 60)"
-            style={{
-              filter: `drop-shadow(0 0 8px ${config.color})`,
-            }}
-          />
-        </svg>
+      {/* Title */}
+      <div className="section-title" style={{ margin: 0, justifyContent: 'center' }}>
+        <ShieldAlert size={12} />
+        Threat Level
+      </div>
 
-        {/* Centre text */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
+      {/* Large score number */}
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <motion.span
+          key={pct}
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+          style={{
+            fontFamily: 'var(--font-mono)', fontWeight: 800, lineHeight: 1,
+            fontSize: '3rem',
+            color: config.color,
+            textShadow: `0 0 30px ${config.hex}70`,
+          }}
+        >
+          {pct}
+        </motion.span>
+        <span style={{
+          fontSize: '0.52rem', color: 'var(--text-muted)',
+          textTransform: 'uppercase', letterSpacing: '0.16em', marginTop: 2,
         }}>
-          <motion.span
-            key={pct}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            style={{
-              fontSize: '2rem', fontWeight: 800,
-              fontFamily: 'var(--font-mono)',
-              color: config.color,
-              lineHeight: 1,
-            }}
-          >
-            {pct}
-          </motion.span>
-          <span style={{
-            fontSize: '0.55rem', color: 'var(--text-muted)',
-            textTransform: 'uppercase', letterSpacing: '0.1em',
-          }}>
-            Score
-          </span>
+          Risk Score
+        </span>
+      </div>
+
+      {/* Segmented horizontal bar */}
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div style={{ display: 'flex', gap: 3, width: '100%' }}>
+          {Array.from({ length: TOTAL_SEGMENTS }).map((_, i) => {
+            const filled = i < filledSegments;
+            // Colour transitions: 0-3=cyan, 4-6=amber, 7-9=red
+            const segColor = i < 3 ? '#00ffa9' : i < 7 ? '#f59e0b' : '#ef4444';
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scaleY: 0.4 }}
+                animate={{ opacity: filled ? 1 : 0.12, scaleY: filled ? 1 : 0.5 }}
+                transition={{ delay: i * 0.04, duration: 0.35 }}
+                style={{
+                  flex: 1, height: 14, borderRadius: 3,
+                  background: filled ? segColor : 'rgba(255,255,255,0.04)',
+                  boxShadow: filled ? `0 0 10px ${segColor}70` : 'none',
+                  transformOrigin: 'center',
+                }}
+              />
+            );
+          })}
+        </div>
+        {/* Labels */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 1px' }}>
+          {['Low', 'Med', 'High'].map((l) => (
+            <span key={l} style={{
+              fontSize: '0.45rem', color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+            }}>
+              {l}
+            </span>
+          ))}
         </div>
       </div>
 
       {/* Risk level badge */}
       <motion.div
         key={level}
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.85, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '8px 20px', borderRadius: 10,
-          background: config.bg,
-          border: `1px solid ${config.color}40`,
+          padding: '7px 18px', borderRadius: 8, width: '100%', justifyContent: 'center',
+          background: `${config.hex}10`,
+          border: `1px solid ${config.hex}35`,
         }}
       >
         {level === 'HIGH' && (
           <motion.div
-            animate={{ scale: [1, 1.3, 1], opacity: [1, 0.5, 1] }}
-            transition={{ duration: 0.8, repeat: Infinity }}
+            animate={{ scale: [1, 1.4, 1], opacity: [1, 0.4, 1] }}
+            transition={{ duration: 0.75, repeat: Infinity }}
             style={{
-              width: 10, height: 10, borderRadius: '50%',
-              background: config.color,
-              boxShadow: `0 0 10px ${config.color}`,
+              width: 9, height: 9, borderRadius: '50%',
+              background: config.color, boxShadow: `0 0 10px ${config.hex}`,
             }}
           />
         )}
         <span style={{
-          fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
+          fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
           fontWeight: 700, color: config.color,
           letterSpacing: '0.1em',
+          textShadow: `0 0 12px ${config.hex}60`,
         }}>
           {config.label}
         </span>

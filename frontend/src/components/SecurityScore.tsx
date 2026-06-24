@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { ShieldAlert, Info, AlertTriangle, ArrowRight } from 'lucide-react';
 
 interface ScoreData {
   score: number; grade: string; status: string; color: string;
@@ -9,11 +10,11 @@ interface ScoreData {
 }
 
 const COLOR_MAP: Record<string, string> = {
-  green: '#22c55e',
-  teal: '#14b8a6',
-  amber: '#f59e0b',
-  orange: '#f97316',
-  red: '#ef4444',
+  green: 'var(--risk-low)',    // #00ffa9
+  teal: '#00d4ff',             // cyan
+  amber: 'var(--risk-medium)', // #f59e0b
+  orange: '#fb923c',           // bright orange
+  red: 'var(--risk-high)',     // #ef4444
 };
 
 export default function SecurityScore() {
@@ -32,102 +33,154 @@ export default function SecurityScore() {
   }, []);
 
   if (!data) return (
-    <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-      Loading security score…
+    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+      <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+        Calculating Threat Score…
+      </motion.div>
     </div>
   );
 
-  const color = COLOR_MAP[data.color] || '#22c55e';
-  const radius = 52;
+  const color = COLOR_MAP[data.color] || 'var(--risk-low)';
+  const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference - (data.score / 100) * circumference;
 
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Score Ring */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-        <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
-          <svg width="120" height="120" style={{ transform: 'rotate(-90deg)' }}>
-            <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+    <div className="glass-card" style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* ── Top Section: Score Ring & Status ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        
+        {/* Glow Ring */}
+        <div style={{ position: 'relative', width: 130, height: 130, flexShrink: 0 }}>
+          <svg width="130" height="130" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="65" cy="65" r={radius} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="6" />
             <motion.circle
-              cx="60" cy="60" r={radius} fill="none"
-              stroke={color} strokeWidth="10"
+              cx="65" cy="65" r={radius} fill="none"
+              stroke={color} strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={circumference}
               initial={{ strokeDashoffset: circumference }}
               animate={{ strokeDashoffset: dashOffset }}
-              transition={{ duration: 1.2, ease: 'easeOut' }}
-              style={{ filter: `drop-shadow(0 0 6px ${color})` }}
+              transition={{ duration: 1.5, ease: 'easeOut', type: 'spring' }}
+              style={{ filter: `drop-shadow(0 0 12px ${color}80)` }}
             />
           </svg>
           <div style={{
             position: 'absolute', inset: 0,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{
-              fontSize: '1.8rem', fontWeight: 900,
-              fontFamily: 'var(--font-mono)', color,
-              textShadow: `0 0 12px ${color}80`,
-            }}>{data.score}</span>
-            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>/100</span>
+            <motion.span
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              style={{
+                fontSize: '2.2rem', fontWeight: 900, lineHeight: 1,
+                fontFamily: 'var(--font-mono)', color,
+                textShadow: `0 0 20px ${color}90`,
+              }}
+            >
+              {data.score}
+            </motion.span>
+            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.14em', marginTop: 2 }}>
+              / 100
+            </span>
           </div>
         </div>
 
-        <div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 800, color }}>{data.status}</div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>Grade: {data.grade}</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+        {/* Status Text & Mini Stats */}
+        <div style={{ flex: 1 }}>
+          <motion.div initial={{ x: 10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
+            <div style={{
+              fontSize: '1.4rem', fontWeight: 800, color, textTransform: 'uppercase',
+              letterSpacing: '0.05em', textShadow: `0 0 10px ${color}50`
+            }}>
+              {data.status}
+            </div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Threat Grade: <strong style={{ color: '#fff' }}>{data.grade}</strong>
+            </div>
+          </motion.div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
             {[
-              { label: 'HIGH', val: data.high_events_today, c: '#ef4444' },
-              { label: 'MED', val: data.medium_events_today, c: '#f59e0b' },
-              { label: 'TOTAL', val: data.total_events_today, c: 'var(--text-muted)' },
-            ].map(s => (
-              <div key={s.label} style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 6, padding: '3px 8px', textAlign: 'center',
-              }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: s.c, fontFamily: 'var(--font-mono)' }}>{s.val}</div>
-                <div style={{ fontSize: '0.5rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{s.label}</div>
-              </div>
+              { label: 'CRITICAL', val: data.high_events_today, c: 'var(--risk-high)', bg: 'rgba(239,68,68,0.08)' },
+              { label: 'ELEVATED', val: data.medium_events_today, c: 'var(--risk-medium)', bg: 'rgba(245,158,11,0.08)' },
+              { label: 'TOTAL', val: data.total_events_today, c: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.05)' },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: i * 0.1 }}
+                style={{
+                  background: s.bg, border: `1px solid ${s.c}20`,
+                  borderRadius: 8, padding: '6px 4px', textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: s.c, fontFamily: 'var(--font-mono)' }}>
+                  {s.val}
+                </div>
+                <div style={{ fontSize: '0.45rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 1 }}>
+                  {s.label}
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Issues */}
+      <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,212,255,0.1), transparent)' }} />
+
+      {/* ── Issues Detected ── */}
       <div>
-        <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 6 }}>Issues Detected</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="section-title">
+          <AlertTriangle size={12} color="var(--risk-high)" /> Active Threats
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {data.issues.map((issue, i) => (
-            <div key={i} style={{
-              display: 'flex', gap: 8, alignItems: 'flex-start',
-              fontSize: '0.7rem', color: 'var(--text-secondary)',
-            }}>
-              <span style={{ color, marginTop: 2, flexShrink: 0 }}>•</span>
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.05 }}
+              style={{
+                display: 'flex', gap: 8, alignItems: 'flex-start',
+                fontSize: '0.68rem', color: 'var(--text-primary)',
+                background: 'rgba(239,68,68,0.04)', padding: '6px 10px', borderRadius: 6,
+                borderLeft: `2px solid ${issue.includes('No security') ? 'var(--risk-low)' : 'var(--risk-high)'}`
+              }}
+            >
               <span>{issue}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
 
-      {/* Recommendations */}
+      {/* ── Recommendations ── */}
       <div>
-        <p style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 6 }}>Recommendations</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="section-title">
+          <ShieldAlert size={12} color="var(--accent-cyan)" /> Tactical Recommendations
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {data.recommendations.map((rec, i) => (
-            <div key={i} style={{
-              display: 'flex', gap: 8, alignItems: 'flex-start',
-              fontSize: '0.7rem', color: 'var(--text-secondary)',
-            }}>
-              <span style={{ color: '#60a5fa', marginTop: 2, flexShrink: 0 }}>→</span>
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.05 }}
+              style={{
+                display: 'flex', gap: 8, alignItems: 'center',
+                fontSize: '0.68rem', color: 'var(--text-secondary)',
+                background: 'rgba(0,212,255,0.03)', padding: '6px 10px', borderRadius: 6,
+                border: '1px solid rgba(0,212,255,0.08)'
+              }}
+            >
+              <ArrowRight size={10} color="var(--accent-cyan)" />
               <span>{rec}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
 
-      <p style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 'auto' }}>
-        Updated: {data.computed_at}
+      <p style={{
+        fontSize: '0.52rem', color: 'var(--text-muted)', textAlign: 'center',
+        marginTop: 'auto', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em'
+      }}>
+        LATEST SCAN: {data.computed_at.toUpperCase()}
       </p>
     </div>
   );

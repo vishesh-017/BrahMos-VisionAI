@@ -87,7 +87,9 @@ class VisionEngine:
         if self.cap and self.cap.isOpened():
             return
         print(f"[VisionEngine] Opening camera index {CAMERA_INDEX}")
-        self.cap = cv2.VideoCapture(CAMERA_INDEX)
+        # Use CAP_DSHOW on Windows to eliminate the 5-10 second camera startup delay
+        self.cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(CAMERA_INDEX)
+        
         if not self.cap.isOpened():
             print("[VisionEngine] Could not open camera — using blank frames")
             self.cap = None
@@ -206,17 +208,35 @@ class VisionEngine:
                     
                     if px2 > px1 and py2 > py1:
                         person_roi_gray = gray_frame[py1:py2, px1:px2]
-                        # Assume face visible if we have a person box
-                        face_visible = True
+                        # Actually detect face
+                        faces = self.face_cascade.detectMultiScale(person_roi_gray, scaleFactor=1.1, minNeighbors=3)
+                        if len(faces) > 0:
+                            face_visible = True
                     
-                    # Check restricted zones
+                    # Check restricted zones (overlap detection)
                     in_zone = False
                     for zone in self.restricted_zones:
                         if len(zone) > 2:
                             pts = np.array([[int(nx * frame_width), int(ny * frame_height)] for nx, ny in zone], np.int32)
+                            
+                            # 1. Check if person centroid is in the polygon
                             if cv2.pointPolygonTest(pts, (cx, cy), False) >= 0:
                                 in_zone = True
                                 break
+                                
+                            # 2. Check if any polygon vertex is inside the person bounding box
+                            for px, py in pts:
+                                if x1 <= px[0] <= x2 and y1 <= py[0] <= y2:
+                                    in_zone = True
+                                    break
+                            if in_zone: break
+                                
+                            # 3. Check if any bounding box corner is inside the polygon
+                            for bx, by in [(x1,y1), (x2,y1), (x1,y2), (x2,y2)]:
+                                if cv2.pointPolygonTest(pts, (bx, by), False) >= 0:
+                                    in_zone = True
+                                    break
+                            if in_zone: break
 
                     current_centroids.append((cx, cy, x1, y1, x2, y2, conf, label, colour, face_visible, identified_name, identified_role, in_zone))
                 else:
@@ -229,7 +249,7 @@ class VisionEngine:
                     })
                     # Draw normal bounding box
                     cv2.rectangle(annotated, (x1, y1), (x2, y2), colour, 2)
-                    txt = f"{label} {conf:.0%}"
+                    txt = f"{label}"
                     (tw, th), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
                     cv2.rectangle(annotated, (x1, y1 - th - 10), (x1 + tw + 6, y1), colour, -1)
                     cv2.putText(annotated, txt, (x1 + 3, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
@@ -329,8 +349,10 @@ class VisionEngine:
                 "in_zone": in_zone,
             })
             
-            # Draw bounding box — green for known persons, amber for owner, red for loitering, default otherwise
-            if identified_role == "owner":
+            # Draw bounding box
+            if in_zone and identified_role != "owner":
+                box_colour = (0, 0, 255)    # red
+            elif identified_role == "owner":
                 box_colour = (0, 215, 255)  # gold
             elif identified_name:
                 box_colour = (0, 255, 100)  # bright green
@@ -345,8 +367,15 @@ class VisionEngine:
                 role_tag = f" [{identified_role.upper()}]" if identified_role else ""
                 txt = f"{identified_name}{role_tag}"
             else:
-                status_txt = " (LOITERING)" if is_loitering else ""
-                txt = f"{label} {conf:.0%}{status_txt}"
+                txt = f"{label}"
+            
+            # Status tags
+            if in_zone and identified_role != "owner":
+                txt += " (RESTRICTED)"
+            elif is_loitering:
+                txt += " (LOITERING)"
+            elif not face_visible:
+                txt += " (MASKED/UNIDENTIFIED)"
             
             (tw, th), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
             cv2.rectangle(annotated, (x1, y1 - th - 10), (x1 + tw + 6, y1), box_colour, -1)

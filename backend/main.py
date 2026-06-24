@@ -690,11 +690,26 @@ async def generate_report_pdf():
     if medium_events:
         story.append(HRFlowable(width="100%", thickness=1, color=AMBER, spaceAfter=6))
         story.append(Paragraph(f"Medium Risk Events — {len(medium_events)} Event(s)", h3a))
-        med_data = [["Time", "Description", "Score"]]
+        med_data = [["Time", "Description", "Score", "Evidence"]]
         for ev in medium_events[:20]:
             ts = datetime.fromisoformat(ev["timestamp"]).strftime("%H:%M:%S")
-            med_data.append([ts, ev.get("scene_description", "N/A"), str(ev.get("risk_score", "N/A"))])
-        med_table = Table(med_data, colWidths=[28*mm, 120*mm, 18*mm])
+            desc = ev.get("scene_description", "N/A")
+            score = str(ev.get("risk_score", "N/A"))
+            
+            img_element = ""
+            snapshot_file = ev.get("snapshot_path")
+            if snapshot_file:
+                snap_full = os.path.join(os.path.dirname(__file__), "data", "snapshots", snapshot_file)
+                if os.path.exists(snap_full):
+                    from reportlab.platypus import Image as RLImage
+                    try:
+                        img_element = RLImage(snap_full, width=32*mm, height=18*mm)
+                    except Exception:
+                        pass
+                        
+            med_data.append([ts, desc, score, img_element])
+            
+        med_table = Table(med_data, colWidths=[24*mm, 86*mm, 16*mm, 40*mm])
         med_table.setStyle(TableStyle([
             ("BACKGROUND",    (0,0), (-1,0),  colors.HexColor("#fffbeb")),
             ("TEXTCOLOR",     (0,0), (-1,0),  AMBER),
@@ -707,6 +722,7 @@ async def generate_report_pdf():
             ("BOTTOMPADDING", (0,0), (-1,-1), 5),
             ("LEFTPADDING",   (0,0), (-1,-1), 6),
             ("RIGHTPADDING",  (0,0), (-1,-1), 6),
+            ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
         ]))
         story.append(med_table)
         story.append(Spacer(1, 12))

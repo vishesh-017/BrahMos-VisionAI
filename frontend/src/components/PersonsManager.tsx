@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Users, UploadCloud, Camera, X, PlusCircle, UserX, Shield } from 'lucide-react';
 
 interface Person {
   id: string; name: string; role: string;
@@ -7,17 +8,17 @@ interface Person {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  owner: '#f59e0b',
-  staff: '#22c55e',
-  guest: '#60a5fa',
-  unknown: '#9ca3af',
+  owner: 'var(--accent-amber)',
+  staff: 'var(--accent-green)',
+  guest: 'var(--accent-cyan)',
+  unknown: 'var(--text-muted)',
 };
 
-const ROLE_ICONS: Record<string, string> = {
-  owner: '👑',
-  staff: '🛡️',
-  guest: '🧑',
-  unknown: '❓',
+const ROLE_ICONS: Record<string, any> = {
+  owner: <Shield size={16} color="var(--accent-amber)" />,
+  staff: <Shield size={16} color="var(--accent-green)" />,
+  guest: <Users size={16} color="var(--accent-cyan)" />,
+  unknown: <Users size={16} color="var(--text-muted)" />,
 };
 
 export default function PersonsManager() {
@@ -66,7 +67,7 @@ export default function PersonsManager() {
       }
     } catch (err) {
       console.error(err);
-      setError('Could not access webcam. Please check permissions.');
+      setError('CAMERA ACCESS DENIED. CHECK PERMISSIONS.');
       setUseWebcam(false);
     }
   };
@@ -86,12 +87,10 @@ export default function PersonsManager() {
       canvas.height = videoRef.current.videoHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Draw the video frame to the canvas
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setPreview(dataUrl);
         
-        // Convert to File object for the form
         fetch(dataUrl)
           .then(res => res.blob())
           .then(blob => {
@@ -124,8 +123,8 @@ export default function PersonsManager() {
     e.preventDefault();
     const fileToUpload = capturedFile;
     
-    if (!fileToUpload) { setError('Please provide a photo.'); return; }
-    if (!name.trim()) { setError('Please enter a name.'); return; }
+    if (!fileToUpload) { setError('UPLOAD OR CAPTURE AN IDENTITY IMAGE.'); return; }
+    if (!name.trim()) { setError('SUBJECT NAME REQUIRED.'); return; }
 
     setUploading(true); setError(''); setSuccess('');
     const fd = new FormData();
@@ -136,193 +135,222 @@ export default function PersonsManager() {
     try {
       const r = await fetch('/api/persons', { method: 'POST', body: fd });
       const data = await r.json();
-      if (!r.ok) { setError(data.error || 'Failed to register person.'); return; }
-      setSuccess(`✅ ${data.name} registered successfully!`);
+      if (!r.ok) { setError(data.error?.toUpperCase() || 'REGISTRATION FAILED.'); return; }
+      setSuccess(`IDENTITY ACCEPTED: ${data.name.toUpperCase()}`);
       setName(''); setRole('guest'); clearPhoto();
       await load();
-    } catch { setError('Network error.'); }
+    } catch { setError('UPLINK SEVERED. CHECK NETWORK.'); }
     finally { setUploading(false); }
   };
 
   const onDelete = async (id: string, pName: string) => {
-    if (!confirm(`Remove ${pName} from the registry?`)) return;
+    if (!confirm(`REVOKE CLEARANCE FOR [${pName.toUpperCase()}]?`)) return;
     await fetch(`/api/persons/${id}`, { method: 'DELETE' });
     await load();
   };
 
   return (
-    <div style={{ padding: 16, height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="glass-card" style={{ padding: '16px 20px', minHeight: 400, display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: '1rem' }}>👤</span>
-        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
-          Person Registry — {persons.length} registered
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 10 }}>
+        <div className="section-title" style={{ margin: 0 }}>
+          <Users size={15} color="var(--accent-cyan)" />
+          IDENTITY REGISTRY
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-cyan)', letterSpacing: '0.1em' }}>
+            {persons.length} ENTITIES REGISTERED
+          </span>
+        </div>
       </div>
 
       {/* Registration Form */}
       <form onSubmit={onSubmit} style={{
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
+        background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid var(--accent-cyan)',
+        borderRadius: 6, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12,
       }}>
-        <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 2 }}>Register New Person</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <PlusCircle size={14} color="var(--accent-cyan)" />
+          <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-cyan)', margin: 0, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            ADD NEW ENTITY
+          </p>
+        </div>
 
         {/* Photo Input Area */}
         <div style={{
-          border: `2px dashed ${(preview || useWebcam) ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.12)'}`,
-          borderRadius: 10, padding: 12, textAlign: 'center',
-          background: (preview || useWebcam) ? 'rgba(0,229,255,0.04)' : 'transparent',
+          border: `1px dashed ${(preview || useWebcam) ? 'var(--accent-cyan)' : 'var(--text-muted)'}`,
+          borderRadius: 4, padding: 16, textAlign: 'center',
+          background: (preview || useWebcam) ? 'rgba(0,212,255,0.05)' : 'rgba(0,0,0,0.5)',
           position: 'relative', overflow: 'hidden',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 90,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 100,
         }}>
           {preview ? (
             <div style={{ position: 'relative' }}>
-              <img src={preview} style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover' }} alt="preview" />
+              <img src={preview} style={{ width: 100, height: 100, borderRadius: 4, objectFit: 'cover', border: '1px solid var(--accent-cyan)', boxShadow: '0 0 15px rgba(0,212,255,0.2)' }} alt="preview" />
               <button type="button" onClick={clearPhoto} style={{
-                position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white',
-                border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: '0.6rem', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
-              }}>✕</button>
+                position: 'absolute', top: -8, right: -8, background: 'var(--accent-red)', color: 'black',
+                border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px var(--accent-red)'
+              }}><X size={14} /></button>
             </div>
           ) : useWebcam ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
               <video 
                 ref={videoRef} 
                 autoPlay 
                 playsInline 
                 muted
-                style={{ width: '100%', maxWidth: 200, borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)' }}
+                style={{ width: '100%', maxWidth: 220, borderRadius: 4, border: '1px solid var(--accent-cyan)' }}
               />
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button type="button" onClick={capturePhoto} style={{
-                  background: 'var(--accent-cyan)', color: '#000', border: 'none', borderRadius: 6,
-                  padding: '4px 12px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer'
-                }}>📸 Snap</button>
+                  background: 'rgba(0,212,255,0.1)', color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)', borderRadius: 4,
+                  padding: '6px 14px', fontSize: '0.7rem', fontFamily: 'var(--font-mono)', cursor: 'pointer', textTransform: 'uppercase',
+                  boxShadow: '0 0 10px rgba(0,212,255,0.2)'
+                }}>Capture</button>
                 <button type="button" onClick={stopWebcam} style={{
-                  background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 6,
-                  padding: '4px 12px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer'
-                }}>Cancel</button>
+                  background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)', borderRadius: 4,
+                  padding: '6px 14px', fontSize: '0.7rem', fontFamily: 'var(--font-mono)', cursor: 'pointer', textTransform: 'uppercase'
+                }}>Abort</button>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+            <div style={{ display: 'flex', gap: 12, width: '100%' }}>
               <button type="button" onClick={() => fileRef.current?.click()} style={{
-                flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'var(--text-primary)', borderRadius: 8, padding: '8px', fontSize: '0.7rem', cursor: 'pointer',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4
-              }}>
-                <span style={{ fontSize: '1.2rem' }}>📁</span>
-                Upload Image
+                flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)',
+                color: 'var(--text-primary)', borderRadius: 4, padding: '12px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.2s'
+              }} onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--text-muted)'} onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}>
+                <UploadCloud size={20} color="var(--text-muted)" />
+                <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}>UPLOAD IMAGE</span>
               </button>
               <button type="button" onClick={startWebcam} style={{
-                flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'var(--text-primary)', borderRadius: 8, padding: '8px', fontSize: '0.7rem', cursor: 'pointer',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4
-              }}>
-                <span style={{ fontSize: '1.2rem' }}>📷</span>
-                Take Photo
+                flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)',
+                color: 'var(--text-primary)', borderRadius: 4, padding: '12px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.2s'
+              }} onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--text-muted)'} onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}>
+                <Camera size={20} color="var(--text-muted)" />
+                <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}>INIT CAMERA</span>
               </button>
             </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
         </div>
 
-        {/* Name */}
-        <input
-          value={name} onChange={e => setName(e.target.value)} placeholder="Full name (e.g. Neel)"
-          style={{
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8, padding: '8px 12px', color: 'var(--text-primary)',
-            fontSize: '0.8rem', fontFamily: 'var(--font-sans)', outline: 'none',
-          }}
-        />
+        <div style={{ display: 'flex', gap: 12 }}>
+          {/* Name */}
+          <input
+            value={name} onChange={e => setName(e.target.value)} placeholder="SUBJECT DESIGNATION"
+            style={{
+              flex: 2, background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border-subtle)',
+              borderRadius: 4, padding: '10px 14px', color: 'var(--text-primary)',
+              fontSize: '0.75rem', fontFamily: 'var(--font-mono)', outline: 'none', letterSpacing: '0.05em'
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent-cyan)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border-subtle)'}
+          />
 
-        {/* Role */}
-        <select
-          value={role} onChange={e => setRole(e.target.value)}
-          style={{
-            background: '#1e293b', /* Dark background to ensure light text is visible */
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8, padding: '8px 12px', color: 'var(--text-primary)',
-            fontSize: '0.8rem', fontFamily: 'var(--font-sans)', outline: 'none',
-            appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none'
-          }}
-        >
-          <option value="owner" style={{ background: '#1e293b', color: '#fff' }}>👑 Owner (Zero risk contribution)</option>
-          <option value="staff" style={{ background: '#1e293b', color: '#fff' }}>🛡️ Staff (Reduced risk contribution)</option>
-          <option value="guest" style={{ background: '#1e293b', color: '#fff' }}>🧑 Guest (Normal rules apply)</option>
-        </select>
+          {/* Role */}
+          <select
+            value={role} onChange={e => setRole(e.target.value)}
+            style={{
+              flex: 1, background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border-subtle)',
+              borderRadius: 4, padding: '10px 14px', color: 'var(--text-primary)',
+              fontSize: '0.75rem', fontFamily: 'var(--font-mono)', outline: 'none',
+              appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', cursor: 'pointer',
+              letterSpacing: '0.05em', textTransform: 'uppercase'
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent-cyan)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border-subtle)'}
+          >
+            <option value="owner" style={{ background: '#020812' }}>OWNER</option>
+            <option value="staff" style={{ background: '#020812' }}>STAFF</option>
+            <option value="guest" style={{ background: '#020812' }}>GUEST</option>
+          </select>
+        </div>
 
-        {error && <p style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}>{error}</p>}
-        {success && <p style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>{success}</p>}
+        {error && <p style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-red)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}><UserX size={12} /> {error}</p>}
+        {success && <p style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-green)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}><Shield size={12} /> {success}</p>}
 
         <button
           type="submit" disabled={uploading}
           style={{
-            background: uploading ? 'rgba(0,229,255,0.2)' : 'var(--accent-cyan)',
-            color: '#000', border: 'none', borderRadius: 8, padding: '9px 0',
-            fontWeight: 700, fontSize: '0.78rem', cursor: uploading ? 'not-allowed' : 'pointer',
-            fontFamily: 'var(--font-sans)',
+            background: uploading ? 'rgba(0,212,255,0.1)' : 'rgba(0,212,255,0.15)',
+            color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)', borderRadius: 4, padding: '10px 0',
+            fontFamily: 'var(--font-mono)', fontSize: '0.75rem', cursor: uploading ? 'not-allowed' : 'pointer',
+            textTransform: 'uppercase', letterSpacing: '0.1em', transition: 'all 0.2s',
+            boxShadow: uploading ? 'none' : '0 0 10px rgba(0,212,255,0.15)'
           }}
+          onMouseOver={(e) => { if (!uploading) e.currentTarget.style.background = 'rgba(0,212,255,0.25)' }}
+          onMouseOut={(e) => { if (!uploading) e.currentTarget.style.background = 'rgba(0,212,255,0.15)' }}
         >
-          {uploading ? 'Registering…' : 'Register Person'}
+          {uploading ? 'PROCESSING...' : 'AUTHORIZE ENTITY'}
         </button>
       </form>
 
       {/* Registered Persons List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, overflowY: 'auto', paddingRight: 4 }}>
         {loading ? (
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>Loading…</p>
+          <p style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', textAlign: 'center', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em', marginTop: 20 }}>ACCESSING DATABASE...</p>
         ) : persons.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)' }}>
-            <p style={{ fontSize: '0.8rem' }}>No persons registered yet.</p>
-            <p style={{ fontSize: '0.65rem', marginTop: 4, opacity: 0.6 }}>Register the owner first to enable smart recognition.</p>
+          <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
+            <Users size={24} style={{ opacity: 0.3, marginBottom: 10 }} />
+            <p style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}>DATABASE EMPTY</p>
+            <p style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', marginTop: 4, opacity: 0.5, letterSpacing: '0.05em' }}>REGISTER OWNER TO INITIALIZE.</p>
           </div>
         ) : (
           <AnimatePresence>
-            {persons.map(p => {
-              const color = ROLE_COLORS[p.role] || '#9ca3af';
+            {persons.map((p, idx) => {
+              const color = ROLE_COLORS[p.role] || 'var(--text-muted)';
               return (
                 <motion.div
                   key={p.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: idx * 0.05 }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 12px', borderRadius: 10,
-                    background: 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${color}30`,
+                    padding: '12px 14px', borderRadius: 6,
+                    background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid var(--border-subtle)',
+                    borderLeft: `3px solid ${color}`,
+                    transition: 'all 0.2s',
                   }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = color; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.4)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
                 >
                   {/* Avatar */}
                   {p.photo_b64 ? (
-                    <img
-                      src={`data:image/jpeg;base64,${p.photo_b64}`}
-                      style={{ width: 42, height: 42, borderRadius: 8, objectFit: 'cover', border: `2px solid ${color}60`, flexShrink: 0 }}
-                      alt={p.name}
-                    />
+                    <div style={{ position: 'relative', width: 44, height: 44 }}>
+                      <img
+                        src={`data:image/jpeg;base64,${p.photo_b64}`}
+                        style={{ width: '100%', height: '100%', borderRadius: 4, objectFit: 'cover', border: `1px solid ${color}60` }}
+                        alt={p.name}
+                      />
+                      <div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 10px ${color}40`, borderRadius: 4, pointerEvents: 'none' }} />
+                    </div>
                   ) : (
                     <div style={{
-                      width: 42, height: 42, borderRadius: 8, background: `${color}20`,
+                      width: 44, height: 44, borderRadius: 4, background: `${color}15`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '1.2rem', flexShrink: 0, border: `2px solid ${color}40`,
+                      flexShrink: 0, border: `1px solid ${color}40`,
                     }}>
-                      {ROLE_ICONS[p.role] || '👤'}
+                      {ROLE_ICONS[p.role]}
                     </div>
                   )}
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)' }}>{p.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{p.name}</span>
                       <span style={{
-                        fontSize: '0.55rem', fontWeight: 700, padding: '1px 6px', borderRadius: 20,
-                        background: `${color}20`, color, border: `1px solid ${color}40`, textTransform: 'uppercase',
+                        fontSize: '0.55rem', fontFamily: 'var(--font-mono)', fontWeight: 800, padding: '2px 6px', borderRadius: 2,
+                        background: `${color}15`, color, border: `1px solid ${color}40`, textTransform: 'uppercase', letterSpacing: '0.1em'
                       }}>{p.role}</span>
                     </div>
-                    <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                      Added {new Date(p.added_at || '').toLocaleDateString('en-IN')}
+                    <p style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: 4, letterSpacing: '0.05em' }}>
+                      AUTH DATE: {new Date(p.added_at || '').toLocaleDateString('en-IN').replace(/\//g, '.')}
                     </p>
                   </div>
 
@@ -330,12 +358,14 @@ export default function PersonsManager() {
                   <button
                     onClick={() => onDelete(p.id, p.name)}
                     style={{
-                      background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                      color: '#ef4444', borderRadius: 6, padding: '4px 8px',
-                      fontSize: '0.6rem', cursor: 'pointer', fontWeight: 600, flexShrink: 0,
+                      background: 'transparent', border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-muted)', borderRadius: 4, padding: '6px 10px',
+                      fontSize: '0.65rem', fontFamily: 'var(--font-mono)', cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s',
                     }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = 'var(--accent-red)'; e.currentTarget.style.borderColor = 'var(--accent-red)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
                   >
-                    Remove
+                    REVOKE
                   </button>
                 </motion.div>
               );
