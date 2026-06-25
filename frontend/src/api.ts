@@ -13,9 +13,29 @@ export const API = {
   ws: `ws://localhost:8000/ws/detections`,
   cameraStart: `${API_BASE}/api/camera/start`,
   cameraStop: `${API_BASE}/api/camera/stop`,
+  cameraSwitch: `${API_BASE}/api/camera/switch`,
+  settings: `${API_BASE}/api/settings`,
+  cameras: `${API_BASE}/api/cameras`,
 };
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface Camera {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface SystemSettings {
+  TWILIO_ACCOUNT_SID: string;
+  TWILIO_AUTH_TOKEN: string;
+  TWILIO_WHATSAPP_NUMBER: string;
+  SECURITY_WHATSAPP_NUMBER: string;
+  SMTP_EMAIL: string;
+  SMTP_PASSWORD: string;
+  ALERT_RECIPIENT_EMAIL: string;
+  GEMINI_API_KEY: string;
+}
 
 export interface Detection {
   label: string;

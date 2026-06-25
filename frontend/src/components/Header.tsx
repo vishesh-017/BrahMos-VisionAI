@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Shield, Wifi, WifiOff, Cpu, Camera, CameraOff, Activity, Zap
+  Shield, Wifi, WifiOff, Cpu, Camera, CameraOff, Activity, Zap, Settings, Video
 } from 'lucide-react';
 import { API, fetchJSON } from '../api';
 
@@ -9,6 +9,8 @@ interface HeaderProps {
   connected: boolean;
   fps: number;
   frameCount?: number;
+  onOpenSettings: () => void;
+  onOpenCameras: () => void;
 }
 
 function useDigitalClock() {
@@ -22,23 +24,15 @@ function useDigitalClock() {
   });
 }
 
-export default function Header({ connected, fps }: HeaderProps) {
-  const [cameraActive, setCameraActive] = useState(true);
+export default function Header({ 
+  connected, 
+  fps, 
+  onOpenSettings, 
+  onOpenCameras,
+  cameraActive,
+  toggleCamera 
+}: HeaderProps & { cameraActive: boolean; toggleCamera: () => void }) {
   const clock = useDigitalClock();
-
-  const toggleCamera = async () => {
-    try {
-      if (cameraActive) {
-        await fetchJSON(API.cameraStop, { method: 'POST' });
-        setCameraActive(false);
-      } else {
-        await fetchJSON(API.cameraStart, { method: 'POST' });
-        setCameraActive(true);
-      }
-    } catch (e) {
-      console.error('Failed to toggle camera:', e);
-    }
-  };
 
   return (
     <motion.header
@@ -57,7 +51,7 @@ export default function Header({ connected, fps }: HeaderProps) {
         WebkitBackdropFilter: 'blur(24px)',
         position: 'sticky',
         top: 0,
-        zIndex: 100,
+        zIndex: 30,
         boxShadow: '0 1px 0 rgba(0,212,255,0.06), 0 4px 24px rgba(0,0,0,0.6)',
       }}
     >
@@ -159,6 +153,40 @@ export default function Header({ connected, fps }: HeaderProps) {
 
         {/* Vertical divider */}
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Camera Manager Button */}
+        <button
+          onClick={onOpenCameras}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 12px', borderRadius: 6,
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            color: '#34d399',
+            fontSize: '0.6rem', fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.2s',
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+          }}
+        >
+          <Video size={12} /> Cameras
+        </button>
+
+        {/* Settings Button */}
+        <button
+          onClick={onOpenSettings}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 12px', borderRadius: 6,
+            background: 'rgba(56, 189, 248, 0.1)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            color: '#38bdf8',
+            fontSize: '0.6rem', fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.2s',
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+          }}
+        >
+          <Settings size={12} /> Settings
+        </button>
 
         {/* Camera Toggle */}
         <button

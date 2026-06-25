@@ -25,7 +25,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import Optional
 
-from sqlalchemy import Column, String, Text, DateTime, create_engine, desc
+from sqlalchemy import Column, String, Text, DateTime, Integer, create_engine, desc
 from sqlalchemy.orm import declarative_base, sessionmaker
 import cv2
 
@@ -46,6 +46,7 @@ class KnownPerson(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False)
     role = Column(String, default="guest")
+    restricted_access = Column(Integer, default=0)
     encodings_json = Column(Text, default="[]")   # JSON list of float vectors
     photo_b64 = Column(Text, nullable=True)
     added_at = Column(DateTime, default=lambda: datetime.now(IST))
@@ -55,12 +56,21 @@ class KnownPerson(Base):
             "id": self.id,
             "name": self.name,
             "role": self.role,
+            "restricted_access": bool(self.restricted_access),
             "photo_b64": self.photo_b64,
             "added_at": self.added_at.isoformat() if self.added_at else None,
         }
 
 
 Base.metadata.create_all(engine)
+
+from sqlalchemy import text
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE known_persons ADD COLUMN restricted_access INTEGER DEFAULT 0"))
+        conn.commit()
+except Exception:
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +178,7 @@ def _load_cache():
                     _face_cache.append({
                         "name": p.name,
                         "role": p.role,
+                        "restricted_access": bool(p.restricted_access),
                         "id": p.id,
                         "encoding": np.array(enc, dtype=np.float64),
                     })
@@ -195,6 +206,7 @@ def add_person(
     role: str,
     image_bytes: bytes,
     photo_b64: Optional[str] = None,
+    restricted_access: bool = False,
 ) -> Optional[dict]:
     """
     Register a new person from raw image bytes.
@@ -220,6 +232,7 @@ def add_person(
             person = KnownPerson(
                 name=name,
                 role=role,
+                restricted_access=int(restricted_access),
                 encodings_json=json.dumps([encoding]),
                 photo_b64=photo_b64,
             )
@@ -297,7 +310,8 @@ def identify_face(face_roi_bgr: np.ndarray, threshold: float = 0.80) -> Optional
         return {
             "name": best_match["name"],
             "role": best_match["role"],
+            "restricted_access": best_match.get("restricted_access", False),
             "id": best_match["id"],
-            "confidence": round(best_score, 2),
+            "confidence": float(best_score)
         }
     return None

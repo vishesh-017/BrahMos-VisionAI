@@ -13,7 +13,10 @@ import ReportGenerator from './components/ReportGenerator';
 import IncidentInvestigator from './components/IncidentInvestigator';
 import SecurityScore from './components/SecurityScore';
 import PersonsManager from './components/PersonsManager';
+import { CameraSidebar } from './components/CameraSidebar';
+import { SettingsPanel } from './components/SettingsPanel';
 import { useDetections, useStats, useEvents } from './hooks';
+import { API } from './api';
 import { MessageSquare, Search, Medal, Users, Brain, BarChart3 } from 'lucide-react';
 
 type TabKey = 'chat' | 'incidents' | 'score' | 'persons' | 'memory' | 'report';
@@ -33,6 +36,26 @@ function App() {
   const { events, loading: eventsLoading } = useEvents(30);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('chat');
+  
+  const [showSettings, setShowSettings] = useState(false);
+  const [showCameras, setShowCameras] = useState(false);
+  
+  // Lifted Camera State
+  const [cameraActive, setCameraActive] = useState(true);
+
+  const toggleCamera = async () => {
+    try {
+      if (cameraActive) {
+        await fetch(API.cameraStop, { method: 'POST' });
+        setCameraActive(false);
+      } else {
+        await fetch(API.cameraStart, { method: 'POST' });
+        setCameraActive(true);
+      }
+    } catch (e) {
+      console.error('Failed to toggle camera:', e);
+    }
+  };
 
   const addAlert = useCallback((a: typeof analysis) => {
     if (!a || a.risk_level === 'LOW') return;
@@ -72,7 +95,14 @@ function App() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)', backgroundAttachment: 'fixed' }}>
       <audio ref={audioRef} loop src="data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" />
-      <Header connected={connected} fps={fps} />
+      <Header 
+        connected={connected} 
+        fps={fps} 
+        onOpenSettings={() => setShowSettings(true)}
+        onOpenCameras={() => setShowCameras(true)}
+        cameraActive={cameraActive}
+        toggleCamera={toggleCamera}
+      />
 
       <main style={{
         flex: 1, padding: '14px 18px 18px',
@@ -181,7 +211,7 @@ function App() {
 
               {activeTab === 'persons' && (
                 <div style={{ flex: 1, overflow: 'auto' }}>
-                  <PersonsManager />
+                  <PersonsManager cameraActive={cameraActive} />
                 </div>
               )}
 
@@ -272,6 +302,11 @@ function App() {
           BRAHMOS-VISIONAI v1.0 &nbsp;·&nbsp; DETECT &nbsp;·&nbsp; UNDERSTAND &nbsp;·&nbsp; THINK &nbsp;·&nbsp; DECIDE &nbsp;·&nbsp; ACT
         </motion.footer>
       </main>
+
+      {/* Modals & Sidebars */}
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+      {showCameras && <CameraSidebar onClose={() => setShowCameras(false)} />}
+
     </div>
   );
 }

@@ -70,7 +70,7 @@ def _compute_risk(summary: dict) -> dict:
     actions: list[str] = []
 
     # ── Rule 0: Zone Violations ───────────────────────────────────────
-    zone_violators = sum(1 for d in summary.get("detections", []) if d.get("in_zone", False) and d.get("identified_role") != "owner")
+    zone_violators = sum(1 for d in summary.get("detections", []) if d.get("in_zone", False) and d.get("identified_role") != "owner" and not d.get("restricted_access", False))
     if zone_violators > 0:
         risk_score += 0.6
         reasons.append(f"{zone_violators} person(s) breached a restricted zone")

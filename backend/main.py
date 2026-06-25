@@ -23,6 +23,27 @@ from email.message import EmailMessage
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+import logging
+import sys
+
+# Configure logging to write to file and console
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("system_errors.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+# Hook to capture unhandled exceptions in the log file
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_exception
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Form, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,10 +65,10 @@ import face_db
 # ──────────────────────────────────────────────────────────────────────
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
-ANALYSIS_INTERVAL = 3          # seconds between AI analyses
+ANALYSIS_INTERVAL = 6          # seconds between AI analyses (throttled for 15 RPM free tier limit)
 MEMORY_SAVE_INTERVAL = 15      # seconds between memory saves (non-LOW events)
 ALWAYS_SAVE_INTERVAL = 60      # seconds between memory saves (even LOW events)
-INCIDENT_CHECK_INTERVAL = 30   # seconds between incident investigation runs
+INCIDENT_CHECK_INTERVAL = 60   # seconds between incident investigation runs
 
 # ──────────────────────────────────────────────────────────────────────
 # Globals
@@ -63,6 +84,7 @@ _restricted_zones: list[list[list[int]]] = []  # list of polygons [[x,y],...]
 _voice_queue = queue.Queue()
 _email_queue = queue.Queue()
 _telegram_queue = queue.Queue()
+_whatsapp_queue = queue.Queue()
 
 # ──────────────────────────────────────────────────────────────────────
 # Background threads
@@ -144,12 +166,65 @@ def _telegram_loop():
                     else:
                         print(f"[Telegram Dispatcher] Failed: {resp.text}")
                 except Exception as e:
-                    print(f"[Telegram Dispatcher] Request failed: {e}")
+                    print(f"[Telegram Dispatcher] Failed to send telegram: {e}")
             _telegram_queue.task_done()
         except queue.Empty:
             continue
         except Exception as e:
             print(f"[Telegram Dispatcher] Error: {e}")
+
+def _whatsapp_loop():
+    """Consumes whatsapp requests and sends them via Twilio."""
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    from_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
+    to_number = os.getenv("SECURITY_WHATSAPP_NUMBER")
+    
+    while not _stop_event.is_set():
+        try:
+            payload = _whatsapp_queue.get(timeout=1.0)
+            text = payload.get("text", "")
+            snapshot_path = payload.get("snapshot_path")
+            
+            if not account_sid or not auth_token or not to_number:
+                print(f"[WhatsApp Dispatcher] SIMULATED DISPATCH (No credentials) -> TO: {to_number} | MSG: {text[:50]}...")
+            else:
+                try:
+                    from twilio.rest import Client
+                    client = Client(account_sid, auth_token)
+                    
+                    media_url = None
+                    # If we have a snapshot, we need to make it publicly accessible for Twilio
+                    if snapshot_path:
+                        snapshot_full_path = os.path.join(os.path.dirname(__file__), "data", "snapshots", snapshot_path)
+                        if os.path.exists(snapshot_full_path):
+                            # Upload to a free public image host (e.g. file.io or imgbb) so Twilio can fetch it
+                            # Using file.io for anonymous temporary public link
+                            try:
+                                with open(snapshot_full_path, "rb") as f:
+                                    response = requests.post("https://file.io", files={"file": f})
+                                    if response.status_code == 200:
+                                        media_url = response.json().get("link")
+                            except Exception as e:
+                                print(f"[WhatsApp Dispatcher] Failed to upload image for Twilio: {e}")
+                    
+                    kwargs = {
+                        "body": text,
+                        "from_": from_number,
+                        "to": to_number
+                    }
+                    if media_url:
+                        kwargs["media_url"] = [media_url]
+                        
+                    message = client.messages.create(**kwargs)
+                    print(f"[WhatsApp Dispatcher] 🟢 Successfully sent alert to {to_number} (SID: {message.sid})")
+                except Exception as e:
+                    print(f"[WhatsApp Dispatcher] Failed to send whatsapp: {e}")
+            _whatsapp_queue.task_done()
+        except queue.Empty:
+            continue
+        except Exception as e:
+            print(f"[WhatsApp Dispatcher] Error: {e}")
 
 def _vision_loop():
     """Continuously grab frames and run YOLO (runs in a daemon thread)."""
@@ -171,7 +246,8 @@ def _analysis_loop():
     last_always_save = 0
     last_saved_state = None
     last_saved_state_time = 0.0
-    last_alert_time = 0.0  # separate cooldown for alert dispatching
+    last_alert_time = 0.0  # separate cooldown for general alert dispatching
+    last_wa_alert_time = 0.0 # separate cooldown for whatsapp
 
     while not _stop_event.is_set():
         time.sleep(ANALYSIS_INTERVAL)
@@ -277,6 +353,15 @@ Scene Description:
                 tg_text = f"🚨 *BrahMos VisionAI Alert* 🚨\n\n*Risk Level:* HIGH (Score: {analysis['risk_score']})\n*Time:* {summary['time']}\n*Persons:* {summary['person_count']}\n\n*Reasoning:*\n{'; '.join(analysis.get('reasons', []))}\n\n*Action:* {analysis.get('suggested_action', '')}"
                 _telegram_queue.put({"text": tg_text})
                 
+            # Fire WhatsApp whenever HIGH or MEDIUM risk is detected
+            if analysis["risk_level"] in ("HIGH", "MEDIUM") and (now - last_wa_alert_time) >= 120:
+                last_wa_alert_time = now
+                wa_text = f"🚨 *BrahMos Security Alert*\n\n*Risk Level:* {analysis['risk_level']} (Score: {analysis['risk_score']})\n*Time:* {summary['time']}\n*Persons:* {summary['person_count']}\n\n*Reasoning:*\n{'; '.join(analysis.get('reasons', []))}\n\n*Action:* {analysis.get('suggested_action', '')}"
+                _whatsapp_queue.put({
+                    "text": wa_text,
+                    "snapshot_path": snapshot if should_save else None
+                })
+                
         except Exception as e:
             print(f"[AnalysisLoop] Error: {e}")
 
@@ -326,12 +411,13 @@ async def lifespan(app: FastAPI):
     t4 = threading.Thread(target=_email_loop, daemon=True)
     t5 = threading.Thread(target=_incident_loop, daemon=True)
     t6 = threading.Thread(target=_telegram_loop, daemon=True)
-    t1.start(); t2.start(); t3.start(); t4.start(); t5.start(); t6.start()
+    t7 = threading.Thread(target=_whatsapp_loop, daemon=True)
+    t1.start(); t2.start(); t3.start(); t4.start(); t5.start(); t6.start(); t7.start()
     print("[BrahMos VisionAI] System online — All agents active")
     yield
     _stop_event.set()
     t1.join(timeout=3); t2.join(timeout=3)
-    t3.join(timeout=1); t4.join(timeout=1); t5.join(timeout=1); t6.join(timeout=1)
+    t3.join(timeout=1); t4.join(timeout=1); t5.join(timeout=1); t6.join(timeout=1); t7.join(timeout=1)
     print("[BrahMos VisionAI] System shutting down")
 
 
@@ -752,6 +838,80 @@ async def stop_camera():
 
 
 # ──────────────────────────────────────────────────────────────────────
+# Settings & Multi-Camera Endpoints
+# ──────────────────────────────────────────────────────────────────────
+@app.get("/api/settings")
+async def get_settings():
+    """Get system settings from .env file."""
+    keys = ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_NUMBER", 
+            "SECURITY_WHATSAPP_NUMBER", "SMTP_EMAIL", "SMTP_PASSWORD", 
+            "ALERT_RECIPIENT_EMAIL", "GEMINI_API_KEY"]
+    return {k: os.getenv(k, "") for k in keys}
+
+@app.post("/api/settings")
+async def save_settings(settings: dict):
+    """Save system settings to .env file."""
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    
+    # Read existing
+    env_vars = {}
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line:
+                    k, v = line.strip().split("=", 1)
+                    env_vars[k.strip()] = v.strip()
+                    
+    # Update
+    for k, v in settings.items():
+        env_vars[k] = str(v)
+        os.environ[k] = str(v) # update running process
+        
+    # Write back
+    with open(env_path, "w") as f:
+        for k, v in env_vars.items():
+            f.write(f"{k}={v}\n")
+            
+    return {"status": "success"}
+
+import json
+@app.get("/api/cameras")
+async def get_cameras():
+    """Get list of cameras from data/cameras.json."""
+    cameras_path = os.path.join(os.path.dirname(__file__), "data", "cameras.json")
+    if not os.path.exists(cameras_path):
+        os.makedirs(os.path.dirname(cameras_path), exist_ok=True)
+        default_cameras = [{"id": "cam-1", "name": "Local Camera", "url": ""}]
+        with open(cameras_path, "w") as f:
+            json.dump(default_cameras, f)
+        return default_cameras
+        
+    with open(cameras_path, "r") as f:
+        return json.load(f)
+
+@app.post("/api/cameras")
+async def save_cameras(cameras: list):
+    """Save list of cameras."""
+    cameras_path = os.path.join(os.path.dirname(__file__), "data", "cameras.json")
+    os.makedirs(os.path.dirname(cameras_path), exist_ok=True)
+    with open(cameras_path, "w") as f:
+        json.dump(cameras, f)
+    return {"status": "success"}
+
+@app.post("/api/camera/switch")
+async def switch_camera(body: dict):
+    """Switch the active camera feed."""
+    url = body.get("url", "")
+    try:
+        # Convert empty string to 0 for local webcam
+        cam_source = int(url) if url.isdigit() else (0 if not url else url)
+        engine.switch_camera(cam_source)
+        return {"status": "success"}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ──────────────────────────────────────────────────────────────────────
 # New Hackathon Feature Endpoints
 # ──────────────────────────────────────────────────────────────────────
 @app.get("/api/incidents")
@@ -817,11 +977,13 @@ async def list_persons():
 async def register_person(
     name: str = Form(...),
     role: str = Form("guest"),
+    restricted_access: str = Form("false"),
     photo: UploadFile = File(...),
 ):
     """Register a new person with a photo upload."""
     image_bytes = await photo.read()
-    result = face_db.add_person(name=name, role=role, image_bytes=image_bytes)
+    has_access = restricted_access.lower() == "true"
+    result = face_db.add_person(name=name, role=role, image_bytes=image_bytes, restricted_access=has_access)
     if result is None:
         return JSONResponse(
             {"error": "No face detected in the uploaded photo. Please use a clear, front-facing photo."},

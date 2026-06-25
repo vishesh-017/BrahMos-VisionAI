@@ -21,7 +21,7 @@ const ROLE_ICONS: Record<string, any> = {
   unknown: <Users size={16} color="var(--text-muted)" />,
 };
 
-export default function PersonsManager() {
+export default function PersonsManager({ cameraActive = true }: { cameraActive?: boolean }) {
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -29,6 +29,7 @@ export default function PersonsManager() {
   const [success, setSuccess] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('guest');
+  const [restrictedAccess, setRestrictedAccess] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   
   // Webcam state
@@ -60,6 +61,18 @@ export default function PersonsManager() {
       setPreview(null);
       setCapturedFile(null);
       setUseWebcam(true);
+      
+      // Tell backend to release the camera hardware lock if it's currently running
+      if (cameraActive) {
+        try {
+          await fetch('/api/camera/stop', { method: 'POST' });
+          // Wait briefly for Windows to release the device
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (e) {
+          console.error('Failed to stop backend camera:', e);
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -76,6 +89,11 @@ export default function PersonsManager() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+      
+      // Tell backend to resume the camera only if it was originally active!
+      if (cameraActive) {
+        fetch('/api/camera/start', { method: 'POST' }).catch(e => console.error(e));
+      }
     }
     setUseWebcam(false);
   };
@@ -130,6 +148,7 @@ export default function PersonsManager() {
     const fd = new FormData();
     fd.append('name', name.trim());
     fd.append('role', role);
+    fd.append('restricted_access', restrictedAccess.toString());
     fd.append('photo', fileToUpload);
 
     try {
@@ -137,7 +156,7 @@ export default function PersonsManager() {
       const data = await r.json();
       if (!r.ok) { setError(data.error?.toUpperCase() || 'REGISTRATION FAILED.'); return; }
       setSuccess(`IDENTITY ACCEPTED: ${data.name.toUpperCase()}`);
-      setName(''); setRole('guest'); clearPhoto();
+      setName(''); setRole('guest'); setRestrictedAccess(false); clearPhoto();
       await load();
     } catch { setError('UPLINK SEVERED. CHECK NETWORK.'); }
     finally { setUploading(false); }
@@ -185,13 +204,14 @@ export default function PersonsManager() {
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 100,
         }}>
           {preview ? (
-            <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <img src={preview} style={{ width: 100, height: 100, borderRadius: 4, objectFit: 'cover', border: '1px solid var(--accent-cyan)', boxShadow: '0 0 15px rgba(0,212,255,0.2)' }} alt="preview" />
               <button type="button" onClick={clearPhoto} style={{
-                position: 'absolute', top: -8, right: -8, background: 'var(--accent-red)', color: 'black',
-                border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px var(--accent-red)'
-              }}><X size={14} /></button>
+                background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)', borderRadius: 4,
+                padding: '6px 14px', fontSize: '0.7rem', fontFamily: 'var(--font-mono)', cursor: 'pointer', textTransform: 'uppercase'
+              }}>
+                Cancel
+              </button>
             </div>
           ) : useWebcam ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
@@ -268,6 +288,29 @@ export default function PersonsManager() {
             <option value="guest" style={{ background: '#020812' }}>GUEST</option>
           </select>
         </div>
+        
+        {/* Restricted Access Toggle (Only for Staff) */}
+        {role === 'staff' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
+            <input 
+              type="checkbox" 
+              id="restricted_access"
+              checked={restrictedAccess}
+              onChange={e => setRestrictedAccess(e.target.checked)}
+              style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+            />
+            <label 
+              htmlFor="restricted_access" 
+              style={{ 
+                fontSize: '0.65rem', fontFamily: 'var(--font-mono)', 
+                color: restrictedAccess ? 'var(--accent-cyan)' : 'var(--text-muted)', 
+                cursor: 'pointer', letterSpacing: '0.05em' 
+              }}
+            >
+              GRANT RESTRICTED ZONE CLEARANCE
+            </label>
+          </div>
+        )}
 
         {error && <p style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-red)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}><UserX size={12} /> {error}</p>}
         {success && <p style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-green)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}><Shield size={12} /> {success}</p>}

@@ -86,9 +86,15 @@ class VisionEngine:
     def start_camera(self):
         if self.cap and self.cap.isOpened():
             return
-        print(f"[VisionEngine] Opening camera index {CAMERA_INDEX}")
-        # Use CAP_DSHOW on Windows to eliminate the 5-10 second camera startup delay
-        self.cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(CAMERA_INDEX)
+            
+        camera_url = os.getenv("CAMERA_URL", "").strip()
+        if camera_url:
+            print(f"[VisionEngine] Connecting to CCTV/IP camera at {camera_url}")
+            self.cap = cv2.VideoCapture(camera_url)
+        else:
+            print(f"[VisionEngine] Opening local camera index {CAMERA_INDEX}")
+            # Use CAP_DSHOW on Windows to eliminate the 5-10 second camera startup delay
+            self.cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(CAMERA_INDEX)
         
         if not self.cap.isOpened():
             print("[VisionEngine] Could not open camera — using blank frames")
@@ -106,6 +112,26 @@ class VisionEngine:
         if self.cap:
             self.cap.release()
             self.cap = None
+
+    def switch_camera(self, new_url: str):
+        """Switches the camera feed on the fly without stopping the engine thread."""
+        print(f"[VisionEngine] Switching camera to: {new_url if new_url else 'Local Webcam'}")
+        
+        # Stop current camera safely
+        if self.cap:
+            self.cap.release()
+            self.cap = None
+            
+        # Temporarily show blank frames while switching
+        self._latest_annotated = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.putText(self._latest_annotated, "Switching Camera...", (180, 240),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+                    
+        # Update env var to persist across potential restarts
+        os.environ["CAMERA_URL"] = new_url
+        
+        # Start new camera
+        self.start_camera()
 
     # ─── Main processing loop (called from a thread) ────────────────
     # --- Main processing loop (called from a thread) ----------------
@@ -213,27 +239,26 @@ class VisionEngine:
                         if len(faces) > 0:
                             face_visible = True
                     
-                    # Check restricted zones (overlap detection)
+                    # Check restricted zones
                     in_zone = False
                     for zone in self.restricted_zones:
                         if len(zone) > 2:
                             pts = np.array([[int(nx * frame_width), int(ny * frame_height)] for nx, ny in zone], np.int32)
-                            
                             # 1. Check if person centroid is in the polygon
                             if cv2.pointPolygonTest(pts, (cx, cy), False) >= 0:
                                 in_zone = True
                                 break
                                 
-                            # 2. Check if any polygon vertex is inside the person bounding box
-                            for px, py in pts:
-                                if x1 <= px[0] <= x2 and y1 <= py[0] <= y2:
+                            # 2. Check if any bounding box corner is inside the polygon
+                            for bx, by in [(x1,y1), (x2,y1), (x1,y2), (x2,y2)]:
+                                if cv2.pointPolygonTest(pts, (bx, by), False) >= 0:
                                     in_zone = True
                                     break
                             if in_zone: break
-                                
-                            # 3. Check if any bounding box corner is inside the polygon
-                            for bx, by in [(x1,y1), (x2,y1), (x1,y2), (x2,y2)]:
-                                if cv2.pointPolygonTest(pts, (bx, by), False) >= 0:
+                            
+                            # 3. Check if any polygon vertex is inside the person bounding box
+                            for px, py in pts:
+                                if x1 <= px <= x2 and y1 <= py <= y2:
                                     in_zone = True
                                     break
                             if in_zone: break
@@ -280,6 +305,9 @@ class VisionEngine:
                 if self._trackers[matched_id].get("identified_name"):
                     identified_name = self._trackers[matched_id]["identified_name"]
                     identified_role = self._trackers[matched_id]["identified_role"]
+                    restricted_access = self._trackers[matched_id].get("restricted_access", False)
+                else:
+                    restricted_access = False
                     
             else:
                 tid_to_use = self._next_tracker_id
@@ -299,8 +327,10 @@ class VisionEngine:
                         if match:
                             identified_name = match["name"]
                             identified_role = match["role"]
+                            restricted_access = match.get("restricted_access", False)
                             self._trackers[tid_to_use]["identified_name"] = identified_name
                             self._trackers[tid_to_use]["identified_role"] = identified_role
+                            self._trackers[tid_to_use]["restricted_access"] = restricted_access
                 except Exception:
                     pass
 
@@ -336,6 +366,8 @@ class VisionEngine:
             if identified_role == "owner":
                 is_loitering = False
             
+            restricted_access_flag = self._trackers[tid_to_use].get("restricted_access", False)
+
             detections.append({
                 "label": label,
                 "confidence": round(conf, 2),
@@ -346,11 +378,12 @@ class VisionEngine:
                 "tracker_id": tid_to_use,
                 "identified_name": identified_name,
                 "identified_role": identified_role,
+                "restricted_access": restricted_access_flag,
                 "in_zone": in_zone,
             })
             
             # Draw bounding box
-            if in_zone and identified_role != "owner":
+            if in_zone and identified_role != "owner" and not restricted_access_flag:
                 box_colour = (0, 0, 255)    # red
             elif identified_role == "owner":
                 box_colour = (0, 215, 255)  # gold
@@ -370,7 +403,7 @@ class VisionEngine:
                 txt = f"{label}"
             
             # Status tags
-            if in_zone and identified_role != "owner":
+            if in_zone and identified_role != "owner" and not restricted_access_flag:
                 txt += " (RESTRICTED)"
             elif is_loitering:
                 txt += " (LOITERING)"
